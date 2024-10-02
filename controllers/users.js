@@ -40,6 +40,46 @@ function createUser(req, res, next){
   });
 }
 
+function login(req, res, next) {
+  const { email, password } = req.body;
+
+  if (!email || !password){
+    return next(new Error('Invalid data entered'))
+  }
+
+  return User.findUserByCredentials(email, password)
+    .then((user) => {
+      const token = jwt.sign({ _id: user._id }, JWT_SECRET, {
+        expiresIn: "7d",
+      });
+      res.send({ token });
+    })
+    .catch((err) => {
+      if (err.message === "Incorrect email or password"){
+      return next(new Error('Incorrect email or password'))
+      }
+      return next(err)
+    });
+};
+
+function getCurrentUser(req, res, next){
+  const {_id} = req.user;
+
+  User.findById(_id)
+    .orFail()
+    .then((user) => {
+      res.send(user);
+    })
+    .catch((err) => {
+      if (err.name === "DocumentNotFoundError"){
+        return next(new NotFoundError('Requested resource not found.'))
+      }
+      return next(err)
+    });
+}
+
 module.exports = {
-  createUser
+  createUser,
+  login,
+  getCurrentUser,
 }

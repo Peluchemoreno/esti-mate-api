@@ -31,9 +31,26 @@ const userSchema = new mongoose.Schema({
   subscription: {
     type: String,
     required: true,
-    enum: ['basic', 'intermediate', 'pro']
+    enum: ['unsubscribed', 'basic', 'intermediate', 'pro']
   }
 })
+
+userSchema.statics.findUserByCredentials = function findUserByCredentials(email, password){
+  return this.findOne({email}).select(('+password'))
+  .then(user => {
+    if (!user){
+      return Promise.reject(new Error('Incorrect email or password'))
+    }
+    return bcrypt.compare(password, user.password)
+    .then((matched) => {
+      if (!matched){
+        return Promise.reject(new Error("Incorrect email or password"))
+      }
+      return user
+    })
+  })
+}
+
 
 const User = mongoose.model('user', userSchema)
 
