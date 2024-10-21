@@ -10,7 +10,7 @@ const mongoose = require('mongoose');
 
 const dataBase = "mongodb://127.0.0.1:27017/esti-mate"
 const mainRouter = require('./routes/index')
-console.log(mainRouter)
+
 
 const app = express();
 const {PORT = 4000} = process.env;

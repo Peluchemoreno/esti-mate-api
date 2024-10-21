@@ -35,4 +35,37 @@ function getAllProjects(req, res, next){
   })
 }
 
-module.exports = {createProject, getAllProjects}
+function deleteProject(req, res, next){
+  const {projectId} = req.params
+  const {_id} = req.user;
+
+  // find project in db first to confirm whether user is owner of project
+  Project.findById(projectId)
+  .orFail()
+  .then(project => {
+    console.log(project)
+    const ownerId = project?.createdBy.toString()
+
+    if (!(_id === ownerId)){
+      return next(new Error('You do not own this project'))
+    }
+
+    return Project.findByIdAndDelete(projectId)
+    .then(project => {
+      res.send({message: `deleted project with ID: ${project._id}`})
+    })
+  })
+  .catch(err => {
+    if (err.name === "CastError"){
+      return next(new Error('invalid data entered'))
+    }
+
+    if (err.name === "DocumentNotFoundError"){
+      return next(new Error('requested resource not found'))
+    }
+    return next(err)
+  })
+}
+
+
+module.exports = {createProject, getAllProjects, deleteProject}
