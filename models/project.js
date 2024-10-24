@@ -1,9 +1,6 @@
 const mongoose = require('mongoose')
 const validator = require('validator')
 
-const diagramArrayBuffer = new mongoose.Schema({
-
-})
 
 const projectSchema = new mongoose.Schema({
   projectName: {

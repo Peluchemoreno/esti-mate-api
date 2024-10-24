@@ -43,7 +43,6 @@ function deleteProject(req, res, next){
   Project.findById(projectId)
   .orFail()
   .then(project => {
-    console.log(project)
     const ownerId = project?.createdBy.toString()
 
     if (!(_id === ownerId)){
