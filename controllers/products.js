@@ -21,7 +21,6 @@ function createProduct(req, res, next){
 
 function deleteProduct(req, res, next){
   const {productId} = req.body
-  console.log(productId)
   Product.findByIdAndDelete(productId)
     .then(product => {
       res.send({message: `deleted product with ID: ${product._id}`})
