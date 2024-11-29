@@ -6,11 +6,12 @@ const productSchema = new mongoose.Schema({
     required: true,
     minlength: 1,
     maxlength: 30,
+    unique: false
   },
   visual: {
     type: String,
     required: true,
-    unique: true,
+    unique: false
   },
   quantity: {
     type: String,
