@@ -1,25 +1,26 @@
-const express = require('express');
+const express = require("express");
 
-require('dotenv').config();
+require("dotenv").config();
 
-const {errors} = require('celebrate')
+const { errors } = require("celebrate");
 
-const cors = require('cors')
+const cors = require("cors");
 
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const dataBase = "mongodb://127.0.0.1:27017/esti-mate"
-const mainRouter = require('./routes/index')
-
+const dataBase = "mongodb://127.0.0.1:27017/esti-mate";
+const mainRouter = require("./routes/index");
 
 const app = express();
-const {PORT = 4000} = process.env;
-mongoose.connect(dataBase, ()=>{console.log('connected successfully to db')})
+const { PORT = 4000 } = process.env;
+mongoose.connect(dataBase, () => {
+  console.log("connected successfully to db");
+});
 
-app.use(cors())
-app.use(express.json())
+app.use(cors());
+app.use(express.json({ limit: "150mb" }));
 
-app.use('/', mainRouter)
-app.listen(PORT, ()=>{
-  console.log(`esti-mate listening on port ${PORT}`)
-})
+app.use("/", mainRouter);
+app.listen(PORT, () => {
+  console.log(`esti-mate listening on port ${PORT}`);
+});
