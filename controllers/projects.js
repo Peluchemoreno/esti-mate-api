@@ -53,6 +53,22 @@ function addDiagramToProject(req, res, next) {
   );
 }
 
+function getProjectDiagrams(req, res, next) {
+  const { projectId } = req.params;
+  Project.findById(projectId)
+    .orFail()
+    .then((project) => {
+      if (project.diagrams) {
+        res.send(project.diagrams);
+      } else {
+        return "No such project";
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+    });
+}
+
 function getAllProjects(req, res, next) {
   const { _id } = req.user;
   Project.find({ createdBy: _id })
@@ -106,4 +122,5 @@ module.exports = {
   getAllProjects,
   deleteProject,
   addDiagramToProject,
+  getProjectDiagrams,
 };
