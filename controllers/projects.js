@@ -60,12 +60,27 @@ function getProjectDiagrams(req, res, next) {
     .then((project) => {
       if (project.diagrams) {
         res.send(project.diagrams);
+        return project.diagrams;
       } else {
         return "No such project";
       }
     })
     .catch((err) => {
       console.error(err);
+    });
+}
+
+function deleteDiagram(req, res, next) {
+  const { projectId } = req.params;
+  const { diagramId } = req.params;
+  Project.findByIdAndUpdate(
+    projectId,
+    { $pull: { diagrams: { _id: diagramId } } }, // Remove by ID
+    { new: true } // Return the updated document
+  )
+    .orFail()
+    .then((updatedProject) => {
+      res.send(updatedProject.diagrams);
     });
 }
 
@@ -123,4 +138,5 @@ module.exports = {
   deleteProject,
   addDiagramToProject,
   getProjectDiagrams,
+  deleteDiagram,
 };
