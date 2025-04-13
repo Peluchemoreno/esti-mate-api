@@ -72,7 +72,7 @@ function getCurrentUser(req, res, next) {
     })
     .catch((err) => {
       if (err.name === "DocumentNotFoundError") {
-        return next(new NotFoundError("Requested resource not found."));
+        return next(new Error("Requested resource not found."));
       }
       return next(err);
     });
