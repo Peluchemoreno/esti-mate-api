@@ -25,6 +25,9 @@ const productSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     required: true,
   },
+  listed: {
+    type: Boolean,
+  },
 })
 
 const Product = mongoose.model('product', productSchema)

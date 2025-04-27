@@ -5,7 +5,15 @@ const JWT_SECRET = require("../utils/config");
 const User = require("../models/user");
 
 function createUser(req, res, next) {
-  const { firstName, lastName, email, password, companyName } = req.body;
+  const {
+    firstName,
+    lastName,
+    email,
+    password,
+    companyName,
+    companyAddress,
+    companyPhone,
+  } = req.body;
 
   User.findOne({ email })
     .then((user) => {
@@ -19,7 +27,9 @@ function createUser(req, res, next) {
         fullName: `${firstName} ${lastName}`,
         email: email,
         passwordHash: hash,
-        companyName: companyName,
+        companyName,
+        companyAddress,
+        companyPhone,
         role: "admin",
       }).then((user) => {
         res.send({

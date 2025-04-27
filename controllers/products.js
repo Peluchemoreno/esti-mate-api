@@ -1,12 +1,13 @@
 const Product = require('../models/product')
 
 function createProduct(req, res, next){
-  const {name, visual, quantity, price} = req.body
+  const {name, visual, quantity, price, listed} = req.body
   Product.create({
     name,
     visual,
     quantity,
     price,
+    listed,
     createdBy: req.user,
   }).then(data => {
     res.send({data})

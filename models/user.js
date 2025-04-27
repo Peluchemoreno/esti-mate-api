@@ -79,7 +79,12 @@ const userSchema = new mongoose.Schema({
     enum: ["active", "canceled", "trialing"],
     default: "active",
   },
-
+  companyAddress: {
+    type: String,
+  },
+  companyPhone: {
+    type: String,
+  },
   role: {
     type: String,
     enum: ["admin", "salesperson", "homeowner"],
