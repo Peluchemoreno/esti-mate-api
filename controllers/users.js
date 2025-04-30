@@ -133,10 +133,28 @@ const getCompanyLogo = async (req, res) => {
   }
 };
 
+function updateUserInfo(req, res, next) {
+  const { _id } = req.user;
+  const { companyName, companyPhoneNumber, companyAddress, logo } = req.body;
+  User.findByIdAndUpdate(
+    _id,
+    { companyName, companyAddress, companyPhone: companyPhoneNumber },
+    { new: true }
+  )
+    .orFail()
+    .then((data) => {
+      res.send(data);
+    })
+    .catch((err) => {
+      return next(err);
+    });
+}
+
 module.exports = {
   createUser,
   login,
   getCurrentUser,
   uploadCompanyLogo,
   getCompanyLogo,
+  updateUserInfo,
 };
