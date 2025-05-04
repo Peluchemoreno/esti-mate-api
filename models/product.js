@@ -1,4 +1,4 @@
-const mongoose = require('mongoose')
+const mongoose = require("mongoose");
 
 const productSchema = new mongoose.Schema({
   name: {
@@ -6,16 +6,16 @@ const productSchema = new mongoose.Schema({
     required: true,
     minlength: 1,
     maxlength: 30,
-    unique: false
+    unique: false,
   },
   visual: {
     type: String,
     required: true,
-    unique: false
+    unique: false,
   },
   quantity: {
     type: String,
-    enum: ['length-feet', 'unit-per']
+    enum: ["length-feet", "unit-per"],
   },
   price: {
     type: String,
@@ -28,8 +28,11 @@ const productSchema = new mongoose.Schema({
   listed: {
     type: Boolean,
   },
-})
+  description: {
+    type: String,
+  },
+});
 
-const Product = mongoose.model('product', productSchema)
+const Product = mongoose.model("product", productSchema);
 
-module.exports = Product
+module.exports = Product;
