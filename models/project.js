@@ -8,24 +8,24 @@ const projectSchema = new mongoose.Schema({
     minlength: 1,
     maxlength: 60,
   },
-  clientName: {
+  billingName: {
     type: String,
     required: true,
     minlength: 1,
     maxlength: 60,
   },
-  address: {
+  billingAddress: {
     type: String,
     required: true,
   },
-  primaryPhoneNumber: {
+  billingPrimaryPhone: {
     type: String,
     required: true,
   },
-  secondaryPhoneNumber: {
+  billingSecondaryPhone: {
     type: String,
   },
-  email: {
+  billingEmail: {
     type: String,
     validate: {
       validator(v) {
@@ -33,7 +33,24 @@ const projectSchema = new mongoose.Schema({
       },
       message: "You must enter a valid email address.",
     },
-    unique: true,
+  },
+  siteName: {
+    type: String,
+    required: true,
+  },
+  siteAddress: {
+    type: String,
+    required: true,
+  },
+  sitePrimaryPhone: {
+    type: String,
+    required: true,
+  },
+  siteSecondaryPhone: {
+    type: String,
+  },
+  siteEmail: {
+    type: String,
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
