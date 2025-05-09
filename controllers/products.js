@@ -1,4 +1,5 @@
 const Product = require("../models/product");
+const UserGutterProduct = require('../models/userGutterProduct');
 
 function createProduct(req, res, next) {
   console.log(req.body);
@@ -43,7 +44,7 @@ function deleteProduct(req, res, next) {
 
 function getAllProducts(req, res, next) {
   const { _id } = req.user;
-  Product.find({ createdBy: _id })
+  UserGutterProduct.find({ createdBy: _id })
     .orFail()
     .then((products) => {
       res.send({ products });
