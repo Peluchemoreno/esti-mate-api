@@ -19,6 +19,7 @@ async function createUserProductCatalog(userId) {
     listed: true,
     canWrapFascia: template.canWrapFascia,
     canReplaceFascia: template.canReplaceFascia,
+    canBeRepaired: template.canBeRepaired,
     canReplace1x2: template.canReplace1x2,
     canBeRemoved: template.canBeRemoved,
     removalPricePerFoot: template.canBeRemoved ? 2.0 : 0,

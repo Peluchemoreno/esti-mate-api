@@ -19,6 +19,7 @@ const GutterProductTemplateSchema = new mongoose.Schema(
     canReplaceFascia: { type: Boolean, default: false },
     canReplace1x2: { type: Boolean, default: false },
     canBeRemoved: { type: Boolean, default: false },
+    canBeRepaired: { type: Boolean, default: false },
 
     // Gutter Guard capability (not guard options themselves)
     supportsGutterGuard: { type: Boolean, default: false },

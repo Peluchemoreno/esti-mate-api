@@ -23,6 +23,7 @@ async function seedTemplates() {
       canReplaceFascia: true,
       canReplace1x2: true,
       canBeRemoved: true,
+      canBeRepaired: true,
     },
     {
       name: '6" K-Style Gutter',
@@ -40,6 +41,7 @@ async function seedTemplates() {
       canReplaceFascia: true,
       canReplace1x2: true,
       canBeRemoved: true,
+      canBeRepaired: true,
     },
     {
       name: '7" K-Style Gutter',
@@ -57,6 +59,7 @@ async function seedTemplates() {
       canReplaceFascia: true,
       canReplace1x2: true,
       canBeRemoved: true,
+      canBeRepaired: true,
     },
     {
       name: '5" Straight Face Gutter',
@@ -73,6 +76,7 @@ async function seedTemplates() {
       canReplaceFascia: true,
       canReplace1x2: true,
       canBeRemoved: true,
+      canBeRepaired: true,
     },
     {
       name: '6" Straight Face Gutter',
@@ -89,6 +93,7 @@ async function seedTemplates() {
       canReplaceFascia: true,
       canReplace1x2: true,
       canBeRemoved: true,
+      canBeRepaired: true,
     },
     {
       name: '7" Straight Face Gutter',
@@ -105,6 +110,7 @@ async function seedTemplates() {
       canReplaceFascia: true,
       canReplace1x2: true,
       canBeRemoved: true,
+      canBeRepaired: true,
     },
     {
       name: '6" Half-Round Gutter',
@@ -121,6 +127,7 @@ async function seedTemplates() {
       canReplaceFascia: true,
       canReplace1x2: true,
       canBeRemoved: true,
+      canBeRepaired: true,
     },
     {
       name: '6" Box Gutter',
@@ -137,6 +144,7 @@ async function seedTemplates() {
       canReplaceFascia: true,
       canReplace1x2: true,
       canBeRemoved: true,
+      canBeRepaired: true,
     },
     {
       name: "Custom Profile Gutter",
@@ -153,6 +161,7 @@ async function seedTemplates() {
       canReplaceFascia: true,
       canReplace1x2: true,
       canBeRemoved: true,
+      canBeRepaired: true,
     },
     {
       name: "2x3 Corrugated Downspout",
@@ -170,6 +179,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: "3x4 Corrugated Downspout",
@@ -186,6 +196,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: "4x5 Corrugated Downspout",
@@ -202,6 +213,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '3" Round Downspout',
@@ -218,6 +230,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '4" Round Downspout',
@@ -235,6 +248,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: "Box Downspout",
@@ -252,6 +266,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: "3x4 Smooth Downspout",
@@ -268,6 +283,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: "3x4 Smooth A Elbow",
@@ -284,6 +300,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: "3x4 Smooth B Elbow",
@@ -300,6 +317,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: "2x3 A Elbow",
@@ -316,6 +334,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: "2x3 B Elbow",
@@ -332,6 +351,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '2x3 2" Offset',
@@ -349,6 +369,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '2x3 4" Offset',
@@ -366,6 +387,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '2x3 6" Offset',
@@ -383,6 +405,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: "3x4 A Elbow",
@@ -399,6 +422,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: "3x4 B Elbow",
@@ -415,6 +439,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '3x4 2" Offset',
@@ -432,6 +457,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '3x4 4" Offset',
@@ -449,6 +475,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '3x4 6" Offset',
@@ -466,6 +493,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: "4x5 A Elbow",
@@ -482,6 +510,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: "4x5 B Elbow",
@@ -498,6 +527,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '4x5 2" Offset',
@@ -515,6 +545,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '4x5 4" Offset',
@@ -532,6 +563,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '4x5 6" Offset',
@@ -549,6 +581,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '3" Round Elbow',
@@ -565,6 +598,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '3" Round 2" Offset',
@@ -582,6 +616,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '3" Round 4" Offset',
@@ -599,6 +634,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '3" Round 6" Offset',
@@ -616,6 +652,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '4" Round Elbow',
@@ -632,6 +669,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '4" Round 2" Offset',
@@ -649,6 +687,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '4" Round 4" Offset',
@@ -666,6 +705,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '4" Round 6" Offset',
@@ -683,6 +723,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '5" K-Style Inside Strip Miter',
@@ -699,6 +740,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '5" K-Style Outside Strip Miter',
@@ -715,6 +757,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '5" K-Style Inside Bay Miter',
@@ -731,6 +774,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '5" K-Style Outside Bay Miter',
@@ -747,6 +791,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '5" K-Style End Cap',
@@ -763,6 +808,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '6" K-Style End Cap',
@@ -779,6 +825,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '6" Half Round End Cap',
@@ -795,6 +842,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '7" K-Style End Cap',
@@ -811,6 +859,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '6" K-Style Inside Strip Miter',
@@ -827,6 +876,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '6" K-Style Outside Strip Miter',
@@ -843,6 +893,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '6" K-Style Inside Bay Miter',
@@ -859,6 +910,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '6" K-Style Outside Bay Miter',
@@ -875,6 +927,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '7" K-Style Inside Strip Miter',
@@ -891,6 +944,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '7" K-Style Outside Strip Miter',
@@ -907,6 +961,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '7" K-Style Inside Bay Miter',
@@ -923,6 +978,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '7" K-Style Outside Bay Miter',
@@ -939,6 +995,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '6" Half Round Inside Strip Miter',
@@ -955,6 +1012,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '6" Half Round Outside Strip Miter',
@@ -971,6 +1029,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '6" Half Round Inside Bay Miter',
@@ -987,6 +1046,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: '6" Half Round Outside Bay Miter',
@@ -1003,6 +1063,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: "Micro-Mesh Guard",
@@ -1019,6 +1080,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: "Splash Block",
@@ -1035,6 +1097,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: "Rain Chain",
@@ -1051,6 +1114,7 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
     },
     {
       name: "Gutter Gate",
@@ -1068,6 +1132,43 @@ async function seedTemplates() {
       canReplaceFascia: false,
       canReplace1x2: false,
       canBeRemoved: true,
+      canBeRepaired: false,
+    },
+    {
+      name: '5" K-Style Box Miter',
+      type: "accessory",
+      profile: '5"',
+      size: '5"',
+      description:
+        'Pre fabricated miter corner to join two sections of 5" K-Style Gutters',
+      defaultColor: "#888888",
+      defaultUnit: "unit",
+      isDownspout: false,
+      hasElbows: false,
+      supportsGutterGuard: false,
+      canWrapFascia: false,
+      canReplaceFascia: false,
+      canReplace1x2: false,
+      canBeRemoved: true,
+      canBeRepaired: false,
+    },
+    {
+      name: '6" K-Style Box Miter',
+      type: "accessory",
+      profile: '6"',
+      size: '6"',
+      description:
+        'Pre fabricated miter corner to join two sections of 6" K-Style Gutters',
+      defaultColor: "#888888",
+      defaultUnit: "unit",
+      isDownspout: false,
+      hasElbows: false,
+      supportsGutterGuard: false,
+      canWrapFascia: false,
+      canReplaceFascia: false,
+      canReplace1x2: false,
+      canBeRemoved: true,
+      canBeRepaired: false,
     },
   ];
 

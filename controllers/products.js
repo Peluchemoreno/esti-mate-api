@@ -61,7 +61,7 @@ function getAllProducts(req, res, next) {
 }
 
 function updateProduct(req, res, next) {
-  const { productId, name, visual, price, quantity } = req.body;
+  const { productId, name, visual, price, quantity, description, category, listed, removalPrice, repairPrice, screenOptions } = req.body;
   Product.findByIdAndUpdate(
     productId,
     { $set: { name, price, quantity, visual } },
