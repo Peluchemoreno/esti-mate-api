@@ -16,7 +16,7 @@ async function createUserProductCatalog(userId) {
     colorCode: template.defaultColor,
     unit: template.defaultUnit,
     price: 0, // Or custom pricing logic
-    listed: true,
+    listed: template.type === "gutter",
     canWrapFascia: template.canWrapFascia,
     canReplaceFascia: template.canReplaceFascia,
     canBeRepaired: template.canBeRepaired,
