@@ -63,6 +63,35 @@ function addDiagramToProject(req, res, next) {
   );
 }
 
+async function updateDiagram(req, res, next) {
+  const { projectId, diagramId } = req.params;
+  const { lines, imageData, totalFootage, price } = req.body;
+  try {
+    const updatedProject = await Project.findOneAndUpdate(
+      { _id: projectId, "diagrams._id": diagramId },
+      {
+        $set: {
+          "diagrams.$.lines": lines,
+          "diagrams.$.imageData": imageData,
+          "diagrams.$.createdAt": new Date().toLocaleString(),
+          "diagrams.$.totalFootage": totalFootage,
+          "diagrams.$.price": price,
+        },
+      },
+      { new: true }
+    );
+
+    if (!updatedProject) {
+      throw new Error("No project or diagram found");
+    }
+
+    return res.status(200).json(updatedProject);
+  } catch (err) {
+    console.error(err);
+    throw err;
+  }
+}
+
 function getProjectDiagrams(req, res, next) {
   const { projectId } = req.params;
   Project.findById(projectId)
@@ -149,4 +178,5 @@ module.exports = {
   addDiagramToProject,
   getProjectDiagrams,
   deleteDiagram,
+  updateDiagram,
 };
