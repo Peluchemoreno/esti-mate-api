@@ -47,7 +47,17 @@ function addDiagramToProject(req, res, next) {
   const { lines, imageData, totalFootage, price } = req.body;
   Project.findByIdAndUpdate(
     projectId,
-    { $push: { diagrams: { lines, imageData, totalFootage, price } } },
+    {
+      $push: {
+        diagrams: {
+          lines,
+          imageData,
+          totalFootage,
+          price,
+          createdAt: new Date().toLocaleString(),
+        },
+      },
+    },
     { new: true },
     (err, updatedProject) => {
       if (err) {
