@@ -5,6 +5,7 @@ const {
   createUserProductCatalog,
 } = require("../services/productCopyService.js");
 const User = require("../models/user");
+const IncorrectEmailOrPasswordError = require("../errors/IncorrectEmailOrPassword.js");
 
 function createUser(req, res, next) {
   const {
@@ -70,7 +71,7 @@ function login(req, res, next) {
     })
     .catch((err) => {
       if (err.message === "Incorrect email or password") {
-        return next(new Error("Incorrect email or password"));
+        return next(IncorrectEmailOrPasswordError);
       }
       return next(err);
     });

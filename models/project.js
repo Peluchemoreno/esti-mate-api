@@ -66,6 +66,7 @@ const projectSchema = new mongoose.Schema({
       imageData: String,
       totalFootage: Number,
       price: String,
+      accessoryData: Array,
       createdAt: { type: String, default: new Date().toLocaleString() },
     },
   ],

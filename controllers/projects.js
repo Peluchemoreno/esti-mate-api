@@ -44,7 +44,8 @@ function createProject(req, res, next) {
 
 function addDiagramToProject(req, res, next) {
   const { projectId } = req.params;
-  const { lines, imageData, totalFootage, price } = req.body;
+  const { lines, imageData, totalFootage, price, accessoryData, product } =
+    req.body;
   Project.findByIdAndUpdate(
     projectId,
     {
@@ -55,6 +56,8 @@ function addDiagramToProject(req, res, next) {
           totalFootage,
           price,
           createdAt: new Date().toLocaleString(),
+          accessoryData,
+          product,
         },
       },
     },
@@ -75,7 +78,8 @@ function addDiagramToProject(req, res, next) {
 
 async function updateDiagram(req, res, next) {
   const { projectId, diagramId } = req.params;
-  const { lines, imageData, totalFootage, price } = req.body;
+  const { lines, imageData, totalFootage, price, accessoryData, product } =
+    req.body;
   try {
     const updatedProject = await Project.findOneAndUpdate(
       { _id: projectId, "diagrams._id": diagramId },
@@ -86,6 +90,8 @@ async function updateDiagram(req, res, next) {
           "diagrams.$.createdAt": new Date().toLocaleString(),
           "diagrams.$.totalFootage": totalFootage,
           "diagrams.$.price": price,
+          "diagrams.$.accessoryData": accessoryData,
+          "diagrams.$.product": product,
         },
       },
       { new: true }
