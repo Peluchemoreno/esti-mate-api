@@ -7,13 +7,25 @@ const { errors } = require("celebrate");
 const cors = require("cors");
 
 const mongoose = require("mongoose");
+// app.js (near top)
+
+const allowed = new Set([
+  "http://localhost:3000", // dev
+  "https://tryestimate.io", // your frontend
+  "https://tryestimate.io/",
+]);
+const app = express();
+app.use(
+  cors({
+    origin: (origin, cb) => cb(null, !origin || allowed.has(origin)),
+    credentials: true,
+  })
+);
 
 // const dataBase = "mongodb://127.0.0.1:27017/esti-mate";
 /* const dataBase =
   "mongodb+srv://jmcdmoreno19:tacobell22@testingcluster.rsp5krz.mongodb.net/?retryWrites=true&w=majority&appName=TestingCluster"; */
 const mainRouter = require("./routes/index");
-
-const app = express();
 
 /* mongoose.connect(dataBase, () => {
   console.log("connected successfully to db");
@@ -33,5 +45,4 @@ app.use(express.json({ limit: "150mb" }));
 app.use("/", mainRouter);
 
 const PORT = process.env.PORT || 3000;
-app.get("/health", (req, res) => res.status(200).send("ok"));
 app.listen(PORT, () => console.log(`API listening on ${PORT}`));
