@@ -1,8 +1,11 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const JWT_SECRET = require("../utils/config");
-
+const {
+  createUserProductCatalog,
+} = require("../services/productCopyService.js");
 const User = require("../models/user");
+const IncorrectEmailOrPasswordError = require("../errors/IncorrectEmailOrPassword.js");
 
 function createUser(req, res, next) {
   const {
@@ -31,10 +34,12 @@ function createUser(req, res, next) {
         companyAddress,
         companyPhone,
         role: "admin",
-      }).then((user) => {
+      }).then(async (user) => {
+        await createUserProductCatalog(user._id);
+        console.log("just ran createUserProductCatalog", user._id);
         res.send({
           email: user.email,
-          name: user.name,
+          name: user.fullName,
         });
       });
     })
@@ -66,7 +71,7 @@ function login(req, res, next) {
     })
     .catch((err) => {
       if (err.message === "Incorrect email or password") {
-        return next(new Error("Incorrect email or password"));
+        return next(IncorrectEmailOrPasswordError);
       }
       return next(err);
     });

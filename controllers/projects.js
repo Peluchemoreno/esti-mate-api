@@ -44,10 +44,23 @@ function createProject(req, res, next) {
 
 function addDiagramToProject(req, res, next) {
   const { projectId } = req.params;
-  const { lines, imageData, totalFootage, price } = req.body;
+  const { lines, imageData, totalFootage, price, accessoryData, product } =
+    req.body;
   Project.findByIdAndUpdate(
     projectId,
-    { $push: { diagrams: { lines, imageData, totalFootage, price } } },
+    {
+      $push: {
+        diagrams: {
+          lines,
+          imageData,
+          totalFootage,
+          price,
+          createdAt: new Date().toLocaleString(),
+          accessoryData,
+          product,
+        },
+      },
+    },
     { new: true },
     (err, updatedProject) => {
       if (err) {
@@ -61,6 +74,38 @@ function addDiagramToProject(req, res, next) {
       return res.status(200).json(updatedProject);
     }
   );
+}
+
+async function updateDiagram(req, res, next) {
+  const { projectId, diagramId } = req.params;
+  const { lines, imageData, totalFootage, price, accessoryData, product } =
+    req.body;
+  try {
+    const updatedProject = await Project.findOneAndUpdate(
+      { _id: projectId, "diagrams._id": diagramId },
+      {
+        $set: {
+          "diagrams.$.lines": lines,
+          "diagrams.$.imageData": imageData,
+          "diagrams.$.createdAt": new Date().toLocaleString(),
+          "diagrams.$.totalFootage": totalFootage,
+          "diagrams.$.price": price,
+          "diagrams.$.accessoryData": accessoryData,
+          "diagrams.$.product": product,
+        },
+      },
+      { new: true }
+    );
+
+    if (!updatedProject) {
+      throw new Error("No project or diagram found");
+    }
+
+    return res.status(200).json(updatedProject);
+  } catch (err) {
+    console.error(err);
+    throw err;
+  }
 }
 
 function getProjectDiagrams(req, res, next) {
@@ -149,4 +194,5 @@ module.exports = {
   addDiagramToProject,
   getProjectDiagrams,
   deleteDiagram,
+  updateDiagram,
 };

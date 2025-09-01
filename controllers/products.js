@@ -1,4 +1,5 @@
 const Product = require("../models/product");
+const UserGutterProduct = require("../models/userGutterProduct");
 
 function createProduct(req, res, next) {
   console.log(req.body);
@@ -43,7 +44,7 @@ function deleteProduct(req, res, next) {
 
 function getAllProducts(req, res, next) {
   const { _id } = req.user;
-  Product.find({ createdBy: _id })
+  UserGutterProduct.find({ createdBy: _id })
     .orFail()
     .then((products) => {
       res.send({ products });
@@ -60,10 +61,33 @@ function getAllProducts(req, res, next) {
 }
 
 function updateProduct(req, res, next) {
-  const { productId, name, visual, price, quantity } = req.body;
-  Product.findByIdAndUpdate(
-    productId,
-    { $set: { name, price, quantity, visual } },
+  const { productId } = req.params;
+  const {
+    name,
+    colorCode,
+    price,
+    unit,
+    description,
+    category,
+    listed,
+    removalPricePerFoot,
+    repairPricePerFoot,
+    screenOptions,
+  } = req.body;
+  console.log(req.body);
+  UserGutterProduct.findOneAndUpdate(
+    { _id: productId },
+    {
+      name,
+      price,
+      unit,
+      colorCode,
+      description,
+      category,
+      listed,
+      removalPricePerFoot,
+      repairPricePerFoot,
+    },
     { runValidators: true, new: true }
   )
     .orFail()
@@ -72,7 +96,11 @@ function updateProduct(req, res, next) {
     })
     .catch((err) => {
       if (err.name === "CastError") {
-        return next(new Error("invalid data entered"));
+        return next(
+          new Error(
+            `The data entered was invalid :( here's some details: ${err})`
+          )
+        );
       }
       if (err.name === "DocumentNotFoundError") {
         return next(new Error("requested resource not found"));
