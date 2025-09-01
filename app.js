@@ -1,48 +1,57 @@
+// app.js
 const express = require("express");
-
+const cors = require("cors");
 require("dotenv").config();
-
+const mongoose = require("mongoose");
 const { errors } = require("celebrate");
 
-const cors = require("cors");
-
-const mongoose = require("mongoose");
-// app.js (near top)
-
-const allowed = new Set([
-  "http://localhost:3000", // dev
-  "https://tryestimate.io", // your frontend
-  "https://tryestimate.io/",
-]);
 const app = express();
-app.use(
-  cors({
-    origin: (origin, cb) => cb(null, !origin || allowed.has(origin)),
-    credentials: true,
-  })
-);
 
-// const dataBase = "mongodb://127.0.0.1:27017/esti-mate";
-/* const dataBase =
-  "mongodb+srv://jmcdmoreno19:tacobell22@testingcluster.rsp5krz.mongodb.net/?retryWrites=true&w=majority&appName=TestingCluster"; */
-const mainRouter = require("./routes/index");
+// ---- CORS (ONE place, no trailing slash) ----
+const allowedOrigins = new Set([
+  "http://localhost:3000",
+  "https://tryestimate.io", // <- exact match, no slash
+]);
 
-/* mongoose.connect(dataBase, () => {
-  console.log("connected successfully to db");
+const corsOptions = {
+  origin(origin, cb) {
+    // allow server-to-server or same-origin requests without Origin header
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.has(origin)) return cb(null, true);
+    return cb(new Error("CORS: origin not allowed"));
+  },
+  credentials: true, // set to false if you don't use cookies/auth headers from browser
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use((req, res, next) => {
+  // helpful for proxies/caches when Origin varies
+  res.setHeader("Vary", "Origin");
+  next();
 });
- */
-mongoose.connect(
-  process.env.MONGODB_URI ||
-    `mongodb+srv://jmcdmoreno19:tacobell22@testingcluster.rsp5krz.mongodb.net/?retryWrites=true&w=majority&appName=TestingCluster`,
-  {
-    dbName: process.env.MONGO_DB || "app",
-  }
-);
-app.use(cors({ origin: process.env.CORS_ORIGIN, credentials: true }));
-// app.use(cors());
+
+app.use(cors(corsOptions));
+// clean preflight handling (must be before routes)
+app.options("*", cors(corsOptions));
+
+// ---- Body parsing ----
 app.use(express.json({ limit: "150mb" }));
 
+// ---- DB ----
+mongoose.connect(
+  process.env.MONGODB_URI ||
+    "mongodb+srv://<redacted>:<redacted>@testingcluster.rsp5krz.mongodb.net/?retryWrites=true&w=majority&appName=TestingCluster",
+  { dbName: process.env.MONGO_DB || "app" }
+);
+
+// ---- Routes ----
+const mainRouter = require("./routes/index");
 app.use("/", mainRouter);
 
+// (optional) celebrate errors if you use celebrate
+app.use(errors());
+
+// ---- Server ----
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`API listening on ${PORT}`));
