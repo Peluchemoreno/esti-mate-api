@@ -1,11 +1,13 @@
 const GutterProductTemplate = require("../models/gutterProductTemplate.js");
 // const DB_URI = "mongodb://localhost:27017/esti-mate";
 const DB_URI =
-  "mongodb+srv://jmcdmoreno19:tacobell22@testingcluster.rsp5krz.mongodb.net/?retryWrites=true&w=majority&appName=TestingCluster";
+  "mongodb+srv://jmcdmoreno19:tacobell22@testingcluster.rsp5krz.mongodb.net/esti-mate?retryWrites=true&w=majority&appName=TestingCluster";
 const mongoose = require("mongoose");
 
 async function seedTemplates() {
-  await mongoose.connect(DB_URI);
+  await mongoose.connect(process.env.MONGODB_URI, {
+    dbName: process.env.MONGO_DB || "esti-mate",
+  });
   console.log("🚀 Connected to db");
 
   const starterItems = [
