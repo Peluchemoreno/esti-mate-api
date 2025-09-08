@@ -10,6 +10,8 @@ const app = express();
 // ---- CORS (ONE place, no trailing slash) ----
 const allowedOrigins = new Set([
   "http://localhost:3000",
+  "http://localhost:4000",
+  "http://localhost:9000",
   "https://tryestimate.io", // <- exact match, no slash
 ]);
 
@@ -40,9 +42,8 @@ app.use(express.json({ limit: "150mb" }));
 
 // ---- DB ----
 mongoose.connect(
-  process.env.MONGODB_URI ||
-    "mongodb+srv://<redacted>:<redacted>@testingcluster.rsp5krz.mongodb.net/?retryWrites=true&w=majority&appName=TestingCluster",
-  { dbName: process.env.MONGO_DB || "app" }
+  process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/esti-mate",
+  { dbName: process.env.MONGO_DB || "esti-mate" }
 );
 
 // ---- Routes ----
@@ -53,5 +54,5 @@ app.use("/", mainRouter);
 app.use(errors());
 
 // ---- Server ----
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`API listening on ${PORT}`));
