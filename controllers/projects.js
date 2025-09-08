@@ -1,7 +1,13 @@
+// projects.js
+const mongoose = require("mongoose");
 const Project = require("../models/project");
 
 function createProject(req, res, next) {
-  const {
+  const userId = req.user?._id;
+  if (!userId)
+    return res.status(401).json({ message: "Authorization required" });
+
+  const fields = (({
     projectName,
     billingName,
     billingAddress,
@@ -13,8 +19,7 @@ function createProject(req, res, next) {
     sitePrimaryPhone,
     siteSecondaryPhone,
     siteEmail,
-  } = req.body;
-  Project.create({
+  }) => ({
     projectName,
     billingName,
     billingAddress,
@@ -26,28 +31,52 @@ function createProject(req, res, next) {
     sitePrimaryPhone,
     siteSecondaryPhone,
     siteEmail,
-    createdBy: req.user,
-  })
-    .then((data) => {
-      res.send({ data });
+  }))(req.body);
+
+  Project.create({ ...fields, createdBy: userId })
+    .then((data) => res.json({ data }))
+    .catch(next);
+}
+
+function getAllProjects(req, res, next) {
+  const userId = req.user?._id;
+  if (!userId)
+    return res.status(401).json({ message: "Authorization required" });
+
+  Project.find({ createdBy: userId })
+    .lean()
+    .then((projects) => res.json({ projects })) // [] ok
+    .catch(next);
+}
+
+function deleteProject(req, res, next) {
+  const userId = req.user?._id;
+  const { projectId } = req.params;
+  if (!userId)
+    return res.status(401).json({ message: "Authorization required" });
+  if (!mongoose.isValidObjectId(projectId))
+    return res.status(400).json({ message: "Invalid id" });
+
+  Project.findOneAndDelete({ _id: projectId, createdBy: userId })
+    .then((doc) => {
+      if (!doc) return res.status(404).json({ message: "Not found" });
+      return res.json({ message: `deleted project with ID: ${doc._id}` });
     })
-    .catch((err) => {
-      if (err.name === "CastError") {
-        return next(new Error("Invalid data sent"));
-      }
-      if (err.name === "InvalidEmailError") {
-        return next(new Error("Please try a different email address."));
-      }
-      return next(err);
-    });
+    .catch(next);
 }
 
 function addDiagramToProject(req, res, next) {
+  const userId = req.user?._id;
   const { projectId } = req.params;
+  if (!userId)
+    return res.status(401).json({ message: "Authorization required" });
+  if (!mongoose.isValidObjectId(projectId))
+    return res.status(400).json({ message: "Invalid id" });
+
   const { lines, imageData, totalFootage, price, accessoryData, product } =
     req.body;
-  Project.findByIdAndUpdate(
-    projectId,
+  Project.findOneAndUpdate(
+    { _id: projectId, createdBy: userId },
     {
       $push: {
         diagrams: {
@@ -55,136 +84,94 @@ function addDiagramToProject(req, res, next) {
           imageData,
           totalFootage,
           price,
-          createdAt: new Date().toLocaleString(),
+          createdAt: new Date(),
           accessoryData,
           product,
         },
       },
     },
-    { new: true },
-    (err, updatedProject) => {
-      if (err) {
-        return res
-          .status(500)
-          .json({ error: "Failed to add diagram to project." });
-      }
-      if (!updatedProject) {
-        return res.status(404).json({ error: "Project not found." });
-      }
-      return res.status(200).json(updatedProject);
-    }
-  );
+    { new: true }
+  )
+    .then((updated) => {
+      if (!updated) return res.status(404).json({ error: "Project not found" });
+      return res.json(updated);
+    })
+    .catch(next);
 }
 
 async function updateDiagram(req, res, next) {
-  const { projectId, diagramId } = req.params;
-  const { lines, imageData, totalFootage, price, accessoryData, product } =
-    req.body;
   try {
-    const updatedProject = await Project.findOneAndUpdate(
-      { _id: projectId, "diagrams._id": diagramId },
+    const userId = req.user?._id;
+    const { projectId, diagramId } = req.params;
+    if (!userId)
+      return res.status(401).json({ message: "Authorization required" });
+    if (
+      !mongoose.isValidObjectId(projectId) ||
+      !mongoose.isValidObjectId(diagramId)
+    )
+      return res.status(400).json({ message: "Invalid id" });
+
+    const updated = await Project.findOneAndUpdate(
+      { _id: projectId, createdBy: userId, "diagrams._id": diagramId },
       {
         $set: {
-          "diagrams.$.lines": lines,
-          "diagrams.$.imageData": imageData,
-          "diagrams.$.createdAt": new Date().toLocaleString(),
-          "diagrams.$.totalFootage": totalFootage,
-          "diagrams.$.price": price,
-          "diagrams.$.accessoryData": accessoryData,
-          "diagrams.$.product": product,
+          "diagrams.$.lines": req.body.lines,
+          "diagrams.$.imageData": req.body.imageData,
+          "diagrams.$.createdAt": new Date(),
+          "diagrams.$.totalFootage": req.body.totalFootage,
+          "diagrams.$.price": req.body.price,
+          "diagrams.$.accessoryData": req.body.accessoryData,
+          "diagrams.$.product": req.body.product,
         },
       },
       { new: true }
     );
-
-    if (!updatedProject) {
-      throw new Error("No project or diagram found");
-    }
-
-    return res.status(200).json(updatedProject);
+    if (!updated)
+      return res.status(404).json({ error: "No project/diagram found" });
+    return res.json(updated);
   } catch (err) {
-    console.error(err);
-    throw err;
+    return next(err);
   }
 }
 
 function getProjectDiagrams(req, res, next) {
+  const userId = req.user?._id;
   const { projectId } = req.params;
-  Project.findById(projectId)
-    .orFail()
+  if (!userId)
+    return res.status(401).json({ message: "Authorization required" });
+  if (!mongoose.isValidObjectId(projectId))
+    return res.status(400).json({ message: "Invalid id" });
+
+  Project.findOne({ _id: projectId, createdBy: userId })
+    .lean()
     .then((project) => {
-      if (project.diagrams) {
-        res.send(project.diagrams);
-        return project.diagrams;
-      } else {
-        return "No such project";
-      }
+      if (!project) return res.status(404).json({ error: "Project not found" });
+      return res.json(project.diagrams || []);
     })
-    .catch((err) => {
-      console.error(err);
-    });
+    .catch(next);
 }
 
 function deleteDiagram(req, res, next) {
-  const { projectId } = req.params;
-  const { diagramId } = req.params;
-  Project.findByIdAndUpdate(
-    projectId,
-    { $pull: { diagrams: { _id: diagramId } } }, // Remove by ID
-    { new: true } // Return the updated document
+  const userId = req.user?._id;
+  const { projectId, diagramId } = req.params;
+  if (!userId)
+    return res.status(401).json({ message: "Authorization required" });
+  if (
+    !mongoose.isValidObjectId(projectId) ||
+    !mongoose.isValidObjectId(diagramId)
   )
-    .orFail()
-    .then((updatedProject) => {
-      res.send(updatedProject.diagrams);
-    });
-}
+    return res.status(400).json({ message: "Invalid id" });
 
-function getAllProjects(req, res, next) {
-  const { _id } = req.user;
-  Project.find({ createdBy: _id })
-    .orFail()
-    .then((projects) => {
-      res.send({ projects });
+  Project.findOneAndUpdate(
+    { _id: projectId, createdBy: userId },
+    { $pull: { diagrams: { _id: diagramId } } },
+    { new: true }
+  )
+    .then((updated) => {
+      if (!updated) return res.status(404).json({ error: "Project not found" });
+      return res.json(updated.diagrams || []);
     })
-    .catch((err) => {
-      if (err.name === "DocumentNotFoundError") {
-        // const error = new Error('there are no projects')
-        // error.statusCode = 404;
-        // error.message = 'There are no projects'
-        res.send([]);
-      }
-      return next(err);
-    });
-}
-
-function deleteProject(req, res, next) {
-  const { projectId } = req.params;
-  const { _id } = req.user;
-
-  // find project in db first to confirm whether user is owner of project
-  Project.findById(projectId)
-    .orFail()
-    .then((project) => {
-      const ownerId = project?.createdBy.toString();
-
-      if (!(_id === ownerId)) {
-        return next(new Error("You do not own this project"));
-      }
-
-      return Project.findByIdAndDelete(projectId).then((project) => {
-        res.send({ message: `deleted project with ID: ${project._id}` });
-      });
-    })
-    .catch((err) => {
-      if (err.name === "CastError") {
-        return next(new Error("invalid data entered"));
-      }
-
-      if (err.name === "DocumentNotFoundError") {
-        return next(new Error("requested resource not found"));
-      }
-      return next(err);
-    });
+    .catch(next);
 }
 
 module.exports = {

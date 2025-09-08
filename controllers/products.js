@@ -1,115 +1,117 @@
-const Product = require("../models/product");
+// products.js
+const mongoose = require("mongoose");
 const UserGutterProduct = require("../models/userGutterProduct");
+// If you intentionally keep a global template catalog, keep `Product` only for templates.
 
 function createProduct(req, res, next) {
-  console.log(req.body);
-  const { name, visual, quantity, price, listed, description } = req.body;
-  Product.create({
-    name,
-    visual,
-    quantity,
-    price,
-    listed,
-    description,
-    createdBy: req.user,
-  })
-    .then((data) => {
-      res.send({ data });
+  try {
+    const userId = req.user?._id;
+    if (!userId)
+      return res.status(401).json({ message: "Authorization required" });
+
+    const { name, visual, quantity, price, listed, description } = req.body;
+    return UserGutterProduct.create({
+      name,
+      visual,
+      quantity,
+      price,
+      listed,
+      description,
+      createdBy: userId,
     })
-    .catch((err) => {
-      if (err.name === "CastError") {
-        return next(new Error("Invalid data sent"));
-      }
-      return next(err);
-    });
+      .then((data) => res.json({ data }))
+      .catch(next);
+  } catch (err) {
+    return next(err);
+  }
 }
 
 function deleteProduct(req, res, next) {
-  const { productId } = req.body;
-  Product.findByIdAndDelete(productId)
-    .then((product) => {
-      res.send({ message: `deleted product with ID: ${product._id}` });
-    })
-    .catch((err) => {
-      if (err.name === "CastError") {
-        return next(new Error("invalid data entered"));
-      }
+  try {
+    const userId = req.user?._id;
+    if (!userId)
+      return res.status(401).json({ message: "Authorization required" });
 
-      if (err.name === "DocumentNotFoundError") {
-        return next(new Error("requested resource not found"));
-      }
-      return next(err);
-    });
+    const { productId } = req.params; // move id to params
+    if (!mongoose.isValidObjectId(productId))
+      return res.status(400).json({ message: "Invalid id" });
+
+    return UserGutterProduct.findOneAndDelete({
+      _id: productId,
+      createdBy: userId,
+    })
+      .then((doc) => {
+        if (!doc) return res.status(404).json({ message: "Not found" });
+        return res.json({ message: `deleted product with ID: ${doc._id}` });
+      })
+      .catch(next);
+  } catch (err) {
+    return next(err);
+  }
 }
 
 function getAllProducts(req, res, next) {
-  const { _id } = req.user;
-  UserGutterProduct.find({ createdBy: _id })
-    .orFail()
-    .then((products) => {
-      res.send({ products });
-    })
-    .catch((err) => {
-      if (err.name === "DocumentNotFoundError") {
-        // const error = new Error('there are no products')
-        // error.statusCode = 404;
-        // error.message = 'There are no products'
-        res.send([]);
-      }
-      return next(err);
-    });
+  try {
+    const userId = req.user?._id;
+    if (!userId)
+      return res.status(401).json({ message: "Authorization required" });
+
+    return UserGutterProduct.find({ createdBy: userId })
+      .lean()
+      .then((products) => res.json({ products })) // [] is fine
+      .catch(next);
+  } catch (err) {
+    return next(err);
+  }
 }
 
 function updateProduct(req, res, next) {
-  const { productId } = req.params;
-  const {
-    name,
-    colorCode,
-    price,
-    unit,
-    description,
-    category,
-    listed,
-    removalPricePerFoot,
-    repairPricePerFoot,
-    screenOptions,
-  } = req.body;
-  console.log(req.body);
-  UserGutterProduct.findOneAndUpdate(
-    { _id: productId },
-    {
+  try {
+    const userId = req.user?._id;
+    if (!userId)
+      return res.status(401).json({ message: "Authorization required" });
+
+    const { productId } = req.params;
+    if (!mongoose.isValidObjectId(productId))
+      return res.status(400).json({ message: "Invalid id" });
+
+    const {
       name,
+      colorCode,
       price,
       unit,
-      colorCode,
       description,
       category,
       listed,
       removalPricePerFoot,
       repairPricePerFoot,
-    },
-    { runValidators: true, new: true }
-  )
-    .orFail()
-    .then((product) => {
-      res.send(product);
-    })
-    .catch((err) => {
-      if (err.name === "CastError") {
-        return next(
-          new Error(
-            `The data entered was invalid :( here's some details: ${err})`
-          )
-        );
-      }
-      if (err.name === "DocumentNotFoundError") {
-        return next(new Error("requested resource not found"));
-      }
-      if (err.name === "ValidationError") {
-        return next(new Error("invalid data entered"));
-      }
-      return next(err);
-    });
+      screenOptions,
+    } = req.body;
+
+    return UserGutterProduct.findOneAndUpdate(
+      { _id: productId, createdBy: userId },
+      {
+        name,
+        price,
+        unit,
+        colorCode,
+        description,
+        category,
+        listed,
+        removalPricePerFoot,
+        repairPricePerFoot,
+        screenOptions,
+      },
+      { new: true, runValidators: true }
+    )
+      .then((product) => {
+        if (!product) return res.status(404).json({ message: "Not found" });
+        return res.json(product);
+      })
+      .catch(next);
+  } catch (err) {
+    return next(err);
+  }
 }
 
 module.exports = {
