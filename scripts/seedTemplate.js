@@ -5,9 +5,12 @@ const DB_URI =
 const mongoose = require("mongoose");
 
 async function seedTemplates() {
-  await mongoose.connect(process.env.MONGODB_URI, {
-    dbName: process.env.MONGO_DB || "esti-mate",
-  });
+  await mongoose.connect(
+    process.env.MONGODB_URI || "mongodb://localhost:27017/esti-mate",
+    {
+      dbName: process.env.MONGO_DB || "esti-mate",
+    }
+  );
   console.log("🚀 Connected to db");
 
   const starterItems = [
@@ -324,7 +327,7 @@ async function seedTemplates() {
       canBeRepaired: false,
     },
     {
-      name: "2x3 A Elbow",
+      name: "2x3 Corrugated A Elbow",
       type: "accessory",
       profile: "corrugated",
       size: "2x3",
@@ -341,7 +344,7 @@ async function seedTemplates() {
       canBeRepaired: false,
     },
     {
-      name: "2x3 B Elbow",
+      name: "2x3 Corrugated B Elbow",
       type: "accessory",
       profile: "corrugated",
       size: "2x3",
@@ -358,7 +361,7 @@ async function seedTemplates() {
       canBeRepaired: false,
     },
     {
-      name: '2x3 2" Offset',
+      name: '2x3 Corrugated 2" Offset',
       type: "accessory",
       profile: "corrugated",
       size: "2x3",
@@ -376,7 +379,7 @@ async function seedTemplates() {
       canBeRepaired: false,
     },
     {
-      name: '2x3 4" Offset',
+      name: '2x3 Corrugated 4" Offset',
       type: "accessory",
       profile: "corrugated",
       size: "2x3",
@@ -394,7 +397,7 @@ async function seedTemplates() {
       canBeRepaired: false,
     },
     {
-      name: '2x3 6" Offset',
+      name: '2x3 Corrugated 6" Offset',
       type: "accessory",
       profile: "corrugated",
       size: "2x3",
@@ -412,7 +415,7 @@ async function seedTemplates() {
       canBeRepaired: false,
     },
     {
-      name: "3x4 A Elbow",
+      name: "3x4 Corrugated A Elbow",
       type: "accessory",
       profile: "corrugated",
       size: "3x4",
@@ -429,7 +432,7 @@ async function seedTemplates() {
       canBeRepaired: false,
     },
     {
-      name: "3x4 B Elbow",
+      name: "3x4 Corrugated B Elbow",
       type: "accessory",
       profile: "corrugated",
       size: "3x4",
@@ -446,7 +449,7 @@ async function seedTemplates() {
       canBeRepaired: false,
     },
     {
-      name: '3x4 2" Offset',
+      name: '3x4 Corrugated 2" Offset',
       type: "accessory",
       profile: "corrugated",
       size: "3x4",
@@ -464,7 +467,7 @@ async function seedTemplates() {
       canBeRepaired: false,
     },
     {
-      name: '3x4 4" Offset',
+      name: '3x4 Corrugated 4" Offset',
       type: "accessory",
       profile: "corrugated",
       size: "3x4",
@@ -482,7 +485,7 @@ async function seedTemplates() {
       canBeRepaired: false,
     },
     {
-      name: '3x4 6" Offset',
+      name: '3x4 Corrugated 6" Offset',
       type: "accessory",
       profile: "corrugated",
       size: "3x4",
@@ -500,10 +503,10 @@ async function seedTemplates() {
       canBeRepaired: false,
     },
     {
-      name: "4x5 A Elbow",
+      name: "4x5 Corrugated A Elbow",
       type: "accessory",
       profile: "corrugated",
-      size: "3x4",
+      size: "4x5",
       description: "A-style elbow for redirecting downspouts toward walls",
       defaultColor: "#000000",
       defaultUnit: "unit",
@@ -517,10 +520,10 @@ async function seedTemplates() {
       canBeRepaired: false,
     },
     {
-      name: "4x5 B Elbow",
+      name: "4x5 Corrugated B Elbow",
       type: "accessory",
       profile: "corrugated",
-      size: "3x4",
+      size: "4x5",
       description: "B-style elbow for redirecting downspouts along walls",
       defaultColor: "#000000",
       defaultUnit: "unit",
@@ -534,7 +537,7 @@ async function seedTemplates() {
       canBeRepaired: false,
     },
     {
-      name: '4x5 2" Offset',
+      name: '4x5 Corrugated 2" Offset',
       type: "accessory",
       profile: "corrugated",
       size: "4x5",
@@ -552,7 +555,7 @@ async function seedTemplates() {
       canBeRepaired: false,
     },
     {
-      name: '4x5 4" Offset',
+      name: '4x5 Corrugated 4" Offset',
       type: "accessory",
       profile: "corrugated",
       size: "4x5",
@@ -570,7 +573,7 @@ async function seedTemplates() {
       canBeRepaired: false,
     },
     {
-      name: '4x5 6" Offset',
+      name: '4x5 Corrugated 6" Offset',
       type: "accessory",
       profile: "corrugated",
       size: "4x5",

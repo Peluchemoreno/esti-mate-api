@@ -73,8 +73,20 @@ function addDiagramToProject(req, res, next) {
   if (!mongoose.isValidObjectId(projectId))
     return res.status(400).json({ message: "Invalid id" });
 
-  const { lines, imageData, totalFootage, price, accessoryData, product } =
-    req.body;
+  const {
+    lines,
+    imageData,
+    totalFootage,
+    price,
+    accessoryData,
+    product,
+    elbowsBySize,
+    elbowLineItems,
+    endCapsByProduct,
+    mitersByProduct,
+    mixedMiters,
+    accessories,
+  } = req.body;
   Project.findOneAndUpdate(
     { _id: projectId, createdBy: userId },
     {
@@ -87,6 +99,12 @@ function addDiagramToProject(req, res, next) {
           createdAt: new Date(),
           accessoryData,
           product,
+          elbowsBySize,
+          elbowLineItems,
+          endCapsByProduct,
+          mitersByProduct,
+          mixedMiters,
+          accessories,
         },
       },
     },
@@ -122,6 +140,12 @@ async function updateDiagram(req, res, next) {
           "diagrams.$.price": req.body.price,
           "diagrams.$.accessoryData": req.body.accessoryData,
           "diagrams.$.product": req.body.product,
+          "diagrams.$.elbowsBySize": req.body.elbowsBySize,
+          "diagrams.$.elbowLineItems": req.body.elbowLineItems,
+          "diagrams.$.endCapsByProduct": req.body.endCapsByProduct,
+          "diagrams.$.mitersByProduct": req.body.mitersByProduct,
+          "diagrams.$.mixedMiters": req.body.mixedMiters,
+          "diagrams.$.accessories": req.body.accessories,
         },
       },
       { new: true }
