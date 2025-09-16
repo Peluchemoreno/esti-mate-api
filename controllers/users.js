@@ -35,7 +35,11 @@ function createUser(req, res, next) {
         companyPhone,
         role: "admin",
       }).then(async (user) => {
-        await createUserProductCatalog(user._id);
+        try {
+          await createUserProductCatalog(user._id);
+        } catch (err) {
+          console.error("Error creating user catalog:", err);
+        }
         console.log("just ran createUserProductCatalog", user._id);
         res.send({
           email: user.email,

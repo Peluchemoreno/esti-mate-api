@@ -1,17 +1,15 @@
-const GutterProductTemplate = require("../models/gutterProductTemplate.js");
-// const DB_URI = "mongodb://localhost:27017/esti-mate";
-const DB_URI =
-  "mongodb+srv://jmcdmoreno19:tacobell22@testingcluster.rsp5krz.mongodb.net/esti-mate?retryWrites=true&w=majority&appName=TestingCluster";
+// scripts/seedTemplatesExact.js
 const mongoose = require("mongoose");
+const GutterProductTemplate = require("../models/gutterProductTemplate"); // adjust path if needed
 
-async function seedTemplates() {
-  await mongoose.connect(
-    process.env.MONGODB_URI || "mongodb://localhost:27017/esti-mate",
-    {
-      dbName: process.env.MONGO_DB || "esti-mate",
-    }
-  );
+const DB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/esti-mate";
+const DB_NAME = process.env.MONGO_DB || "esti-mate";
+
+async function main() {
+  await mongoose.connect(DB_URI, { dbName: DB_NAME });
   console.log("🚀 Connected to db");
+
+  // === YOUR EXACT SOURCE OF TRUTH ===
 
   const starterItems = [
     {
@@ -1267,27 +1265,50 @@ async function seedTemplates() {
     },
   ];
 
-  let newItems = 0;
-
-  for (const item of starterItems) {
-    const exists = await GutterProductTemplate.findOne({
-      name: item.name,
-    });
-
-    if (!exists) {
-      await GutterProductTemplate.create(item);
-      newItems++;
-      console.log(`✅ Inserted: ${item.name}`);
-    } else {
-      console.log(`⚠️ Skipped duplicate: ${item.name}`);
-    }
+  // 1) Create a unique index on name (once). Ignore error if exists.
+  try {
+    await GutterProductTemplate.collection.createIndex(
+      { name: 1 },
+      { unique: true }
+    );
+    console.log("✅ Unique index on name ensured");
+  } catch (e) {
+    console.warn("⚠️ Could not ensure unique index on name:", e.message);
   }
 
-  console.log(`Seeded ${newItems} products successfully ✅`);
-  process.exit();
+  // 2) Upsert all items by name (replace doc to keep fields exactly as defined)
+  const ops = starterItems.map((doc) => ({
+    replaceOne: {
+      filter: { name: doc.name },
+      replacement: {
+        ...doc,
+        updatedAt: new Date(),
+      },
+      upsert: true,
+    },
+  }));
+
+  const bulk = await GutterProductTemplate.bulkWrite(ops, { ordered: false });
+  console.log("🧩 Upserted/Matched templates:", {
+    upserted: bulk.upsertedCount ?? 0,
+    matched: bulk.matchedCount ?? 0,
+  });
+
+  // 3) Delete any templates not in starterItems (strict mode)
+  const keepNames = new Set(starterItems.map((x) => x.name));
+  const resDelete = await GutterProductTemplate.deleteMany({
+    name: { $nin: [...keepNames] },
+  });
+  console.log(
+    "🧹 Deleted templates not in source set:",
+    resDelete.deletedCount
+  );
+
+  console.log("✅ Templates now match starterItems exactly.");
+  await mongoose.disconnect();
 }
 
-seedTemplates().catch((err) => {
-  console.error("⚠️ Seeding failed", err);
+main().catch((err) => {
+  console.error("❌ Seed failed:", err);
   process.exit(1);
 });

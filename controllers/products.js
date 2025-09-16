@@ -1,122 +1,132 @@
-// products.js
+// controllers/products.js
 const mongoose = require("mongoose");
 const UserGutterProduct = require("../models/userGutterProduct");
-// If you intentionally keep a global template catalog, keep `Product` only for templates.
 
-function createProduct(req, res, next) {
+// CREATE
+async function createProduct(req, res, next) {
   try {
     const userId = req.user?._id;
     if (!userId)
       return res.status(401).json({ message: "Authorization required" });
 
-    const { name, visual, quantity, price, listed, description } = req.body;
-    return UserGutterProduct.create({
+    const {
       name,
-      visual,
-      quantity,
       price,
-      listed,
       description,
-      createdBy: userId,
-    })
-      .then((data) => res.json({ data }))
-      .catch(next);
+      colorCode,
+      unit,
+      listed,
+      // keep any other fields you allow...
+    } = req.body;
+
+    const doc = await UserGutterProduct.create({
+      userId, // <-- owner (matches schema)
+      name,
+      price, // setter will coerce "$8.00" -> 8
+      description: description ?? "",
+      colorCode: colorCode ?? "#000000",
+      unit: unit ?? "unit",
+      listed: !!listed,
+    });
+
+    return res.json({ data: doc });
   } catch (err) {
-    return next(err);
+    next(err);
   }
 }
 
-function deleteProduct(req, res, next) {
+// READ all for this user
+async function getAllProducts(req, res, next) {
   try {
     const userId = req.user?._id;
     if (!userId)
       return res.status(401).json({ message: "Authorization required" });
 
-    const { productId } = req.params; // move id to params
-    if (!mongoose.isValidObjectId(productId))
-      return res.status(400).json({ message: "Invalid id" });
+    const products = await UserGutterProduct.find({ userId }) // <-- correct filter
+      .sort({ createdAt: -1 })
+      .lean();
 
-    return UserGutterProduct.findOneAndDelete({
-      _id: productId,
-      createdBy: userId,
-    })
-      .then((doc) => {
-        if (!doc) return res.status(404).json({ message: "Not found" });
-        return res.json({ message: `deleted product with ID: ${doc._id}` });
-      })
-      .catch(next);
+    console.log("[getAllProducts] uid=%s count=%d", userId, products.length);
+    return res.json({ products });
   } catch (err) {
-    return next(err);
+    next(err);
   }
 }
 
-function getAllProducts(req, res, next) {
-  try {
-    const userId = req.user?._id;
-    if (!userId)
-      return res.status(401).json({ message: "Authorization required" });
-
-    return UserGutterProduct.find({ createdBy: userId })
-      .lean()
-      .then((products) => res.json({ products })) // [] is fine
-      .catch(next);
-  } catch (err) {
-    return next(err);
-  }
-}
-
-function updateProduct(req, res, next) {
+// UPDATE
+async function updateProduct(req, res, next) {
   try {
     const userId = req.user?._id;
     if (!userId)
       return res.status(401).json({ message: "Authorization required" });
 
     const { productId } = req.params;
-    if (!mongoose.isValidObjectId(productId))
+    if (!mongoose.isValidObjectId(productId)) {
       return res.status(400).json({ message: "Invalid id" });
+    }
 
-    const {
+    const update = (({
       name,
-      colorCode,
       price,
       unit,
+      colorCode,
       description,
-      category,
       listed,
       removalPricePerFoot,
       repairPricePerFoot,
-      screenOptions,
-    } = req.body;
+      gutterGuardOptions,
+    }) => ({
+      name,
+      price,
+      unit,
+      colorCode,
+      description,
+      listed,
+      removalPricePerFoot,
+      repairPricePerFoot,
+      gutterGuardOptions,
+    }))(req.body);
 
-    return UserGutterProduct.findOneAndUpdate(
-      { _id: productId, createdBy: userId },
-      {
-        name,
-        price,
-        unit,
-        colorCode,
-        description,
-        category,
-        listed,
-        removalPricePerFoot,
-        repairPricePerFoot,
-        screenOptions,
-      },
+    const product = await UserGutterProduct.findOneAndUpdate(
+      { _id: productId, userId }, // <-- owner check by userId
+      update,
       { new: true, runValidators: true }
-    )
-      .then((product) => {
-        if (!product) return res.status(404).json({ message: "Not found" });
-        return res.json(product);
-      })
-      .catch(next);
+    );
+
+    if (!product) return res.status(404).json({ message: "Not found" });
+    return res.json({ data: product });
   } catch (err) {
-    return next(err);
+    next(err);
+  }
+}
+
+// DELETE
+async function deleteProduct(req, res, next) {
+  try {
+    const userId = req.user?._id;
+    if (!userId)
+      return res.status(401).json({ message: "Authorization required" });
+
+    const { productId } = req.params;
+    if (!mongoose.isValidObjectId(productId)) {
+      return res.status(400).json({ message: "Invalid id" });
+    }
+
+    const doc = await UserGutterProduct.findOneAndDelete({
+      _id: productId,
+      userId,
+    });
+    if (!doc) return res.status(404).json({ message: "Not found" });
+
+    return res.json({ message: `deleted product with ID: ${doc._id}` });
+  } catch (err) {
+    next(err);
   }
 }
 
 module.exports = {
   createProduct,
-  deleteProduct,
   getAllProducts,
   updateProduct,
+  deleteProduct,
 };
