@@ -7,15 +7,16 @@ const productRouter = require("./product");
 const stripeRouter = require("./stripe");
 // NEW: mount estimates router
 const estimatesRouter = require("./estimates");
+const billingRouter = require("./billing");
 
 router.use("/api/estimates", estimatesRouter);
 router.use("/api/stripe", stripeRouter);
+router.use("/api/billing", authorize, billingRouter);
 
 router.get("/health", (req, res) => res.status(200).send("ok"));
 router.use("/users", userRouter);
 router.use("/dashboard/projects", authorize, projectRouter);
 router.use("/dashboard/products", authorize, productRouter);
 router.post("/signin", login);
-router.post("/signup", userRouter);
 
 module.exports = router;

@@ -4,7 +4,6 @@ const express = require("express");
 const router = express.Router();
 
 const Stripe = require("stripe");
-const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const authorize = require("../middlewares/auth"); // your Bearer auth middleware
 const User = require("../models/user");
@@ -13,15 +12,9 @@ const User = require("../models/user");
 // require("dotenv").config();
 
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY); // sk_*** from env
-const FRONTEND_BASE = (
-  process.env.FRONTEND_BASE_URL || "http://localhost:9000"
-).replace(/\/$/, "");
-const JWT_SECRET = require("../utils/config"); // if this exports the secret string directly
-// If ../utils/config exports { JWT_SECRET: '...' }, then:
-// const { JWT_SECRET } = require("../utils/config");
-
+const FRONTEND_BASE = process.env.FRONTEND_BASE_URL.replace(/\/$/, "");
 function signJwt(userId) {
-  return jwt.sign({ _id: userId }, JWT_SECRET, { expiresIn: "7d" });
+  return jwt.sign({ _id: userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
 }
 
 /**

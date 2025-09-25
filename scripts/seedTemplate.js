@@ -2,8 +2,8 @@
 const mongoose = require("mongoose");
 const GutterProductTemplate = require("../models/gutterProductTemplate"); // adjust path if needed
 
-const DB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/esti-mate";
-const DB_NAME = process.env.MONGO_DB || "esti-mate";
+const DB_URI = process.env.MONGODB_URI;
+const DB_NAME = process.env.MONGO_DB;
 
 async function main() {
   await mongoose.connect(DB_URI, { dbName: DB_NAME });

@@ -1,7 +1,6 @@
 const jwt = require("jsonwebtoken");
 
-const JWT_SECRET = require("../utils/config");
-if (!JWT_SECRET || typeof JWT_SECRET !== "string") {
+if (!process.env.JWT_SECRET || typeof process.env.JWT_SECRET !== "string") {
   throw new Error("JWT_SECRET missing/invalid");
 }
 // const UnauthorizedError = require('../errors/unauthorizedError');
@@ -14,7 +13,7 @@ function authorize(req, res, next) {
 
   const token = auth.slice(7).trim();
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
     if (!payload || !payload._id) {
       return res.status(401).json({ message: "Invalid token" });
     }

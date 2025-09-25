@@ -1,6 +1,5 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const JWT_SECRET = require("../utils/config");
 const { ensureUserCatalog } = require("../services/productCopyService.js");
 const User = require("../models/user");
 const IncorrectEmailOrPasswordError = require("../errors/IncorrectEmailOrPassword.js");
@@ -38,7 +37,7 @@ async function signup(req, res, next) {
       companyAddress,
       companyPhone,
       role: "admin",
-      subscriptionPlan: "free",
+      subscriptionPlan: "basic",
       subscriptionStatus: "active",
       emailVerified: false,
     });
@@ -60,7 +59,7 @@ async function signup(req, res, next) {
     // 5) Issue JWT (if you do that here; if Stripe will replace later, fine)
     const token = jwt.sign(
       { _id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET || "dev-secret",
+      process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
@@ -95,7 +94,7 @@ function login(req, res, next) {
 
   return User.findUserByCredentials(email, password)
     .then((user) => {
-      const token = jwt.sign({ _id: user._id }, JWT_SECRET, {
+      const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, {
         expiresIn: "7d",
       });
       res.send({ token });

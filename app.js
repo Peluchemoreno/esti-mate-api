@@ -1,5 +1,6 @@
 // app.js
 require("dotenv").config();
+console.log(process.env.STRIPE_SECRET_KEY);
 console.log(
   "Stripe mode:",
   process.env.STRIPE_SECRET_KEY?.startsWith("sk_live_") ? "LIVE" : "TEST",
@@ -14,6 +15,7 @@ const { errors } = require("celebrate");
 const { randomUUID } = require("crypto");
 const bodyParser = require("body-parser");
 const Stripe = require("stripe");
+const requireTier = require("./middlewares/requireTier");
 
 const app = express();
 app.set("trust proxy", 1); // if behind a proxy (e.g. Heroku, Vercel, Cloudflare)
@@ -41,8 +43,7 @@ app.post(
       event = stripe.webhooks.constructEvent(
         req.body, // <--- RAW BUFFER
         sig,
-        process.env.STRIPE_WEBHOOK_SECRET ||
-          "whsec_LpKKU1LoRE25PvO2klto2lSDSdahyigO"
+        process.env.STRIPE_WEBHOOK_SECRET
       );
     } catch (err) {
       console.error("⚠️  Webhook signature verification failed:", err.message);
@@ -57,21 +58,23 @@ app.post(
       switch (event.type) {
         case "checkout.session.completed":
           // require and call your handler here to link customer to user
-          // await require("./webhooks/stripeHandlers").onCheckoutCompleted(event);
+          await require("./webhooks/stripeHandlers").onCheckoutCompleted(event);
           break;
 
         case "customer.subscription.created":
         case "customer.subscription.updated":
         case "customer.subscription.deleted":
-          // await require("./webhooks/stripeHandlers").onSubscriptionChange(event);
+          await require("./webhooks/stripeHandlers").onSubscriptionChange(
+            event
+          );
           break;
 
         case "invoice.paid":
-          // await require("./webhooks/stripeHandlers").onInvoicePaid(event);
+          await require("./webhooks/stripeHandlers").onInvoicePaid(event);
           break;
 
         case "invoice.payment_failed":
-          // await require("./webhooks/stripeHandlers").onPaymentFailed(event);
+          await require("./webhooks/stripeHandlers").onPaymentFailed(event);
           break;
 
         default:
@@ -94,6 +97,8 @@ const allowedOrigins = new Set([
   "http://localhost:4000",
   "http://localhost:9000",
   "https://tryestimate.io", // <- exact match, no slash
+  "https://api.tryestimate.io",
+  "https://app.tryestimate.io",
 ]);
 
 const corsOptions = {
@@ -132,10 +137,9 @@ app.use((req, res, next) => {
 });
 
 // ---- DB ----
-mongoose.connect(
-  process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/esti-mate",
-  { dbName: process.env.MONGO_DB || "esti-mate" }
-);
+mongoose.connect(process.env.MONGODB_URI, {
+  dbName: process.env.MONGO_DB,
+});
 
 // ---- Routes ----
 const mainRouter = require("./routes/index");
@@ -145,5 +149,5 @@ app.use("/", mainRouter);
 app.use(errors());
 
 // ---- Server ----
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT;
 app.listen(PORT, () => console.log(`API listening on ${PORT}`));
