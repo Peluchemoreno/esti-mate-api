@@ -5,8 +5,77 @@ require("dotenv").config();
 const mongoose = require("mongoose");
 const { errors } = require("celebrate");
 const { randomUUID } = require("crypto");
+const bodyParser = require("body-parser");
+const Stripe = require("stripe");
 
 const app = express();
+app.set("trust proxy", 1); // if behind a proxy (e.g. Heroku, Vercel, Cloudflare)
+
+const stripe = new Stripe(
+  process.env.STRIPE_SECRET_KEY ||
+    "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",
+  {
+    apiVersion: "2024-06-20",
+  }
+);
+
+app.post(
+  "/webhooks/stripe",
+  bodyParser.raw({ type: "application/json" }),
+  async (req, res) => {
+    console.log("running endpoint /webhooks/stripe");
+    const sig = req.headers["stripe-signature"];
+    let event;
+
+    try {
+      event = stripe.webhooks.constructEvent(
+        req.body, // <--- RAW BUFFER
+        sig,
+        process.env.STRIPE_WEBHOOK_SECRET ||
+          "whsec_LpKKU1LoRE25PvO2klto2lSDSdahyigO"
+      );
+    } catch (err) {
+      console.error("⚠️  Webhook signature verification failed:", err.message);
+      return res.status(400).send("Bad signature");
+    }
+
+    try {
+      // TODO: optional de-dupe using event.id in a small collection
+
+      switch (event.type) {
+        case "checkout.session.completed":
+          // require and call your handler here to link customer to user
+          // await require("./webhooks/stripeHandlers").onCheckoutCompleted(event);
+          break;
+
+        case "customer.subscription.created":
+        case "customer.subscription.updated":
+        case "customer.subscription.deleted":
+          // await require("./webhooks/stripeHandlers").onSubscriptionChange(event);
+          break;
+
+        case "invoice.paid":
+          // await require("./webhooks/stripeHandlers").onInvoicePaid(event);
+          break;
+
+        case "invoice.payment_failed":
+          // await require("./webhooks/stripeHandlers").onPaymentFailed(event);
+          break;
+
+        default:
+          // log and ignore for now
+          console.log("Unhandled event:", event.type);
+          break;
+      }
+
+      return res.sendStatus(200);
+    } catch (err) {
+      console.error("Webhook handler error:", err);
+      return res.sendStatus(500);
+    }
+  }
+);
+
 // ---- CORS (ONE place, no trailing slash) ----
 const allowedOrigins = new Set([
   "http://localhost:3000",
