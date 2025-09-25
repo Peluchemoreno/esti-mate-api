@@ -11,13 +11,9 @@ const Stripe = require("stripe");
 const app = express();
 app.set("trust proxy", 1); // if behind a proxy (e.g. Heroku, Vercel, Cloudflare)
 
-const stripe = new Stripe(
-  process.env.STRIPE_SECRET_KEY ||
-    "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",
-  {
-    apiVersion: "2024-06-20",
-  }
-);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2024-06-20",
+});
 
 app.post(
   "/webhooks/stripe",
