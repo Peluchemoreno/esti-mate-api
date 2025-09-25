@@ -12,10 +12,7 @@ const User = require("../models/user");
 // IMPORTANT: load env ONCE in your entry file (app.js). Not here.
 // require("dotenv").config();
 
-const stripe = Stripe(
-  process.env.STRIPE_SECRET_KEY ||
-    "sk_test_51S84DVLogbJCypHWCRKkchEt71CuN3JYu4JyQ77egRlqJ7BvvUXIZGuxXZGYsoNGvwaC49dxqrQzh6UYximHnjNp00okvbwJ7g"
-); // sk_*** from env
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY); // sk_*** from env
 const FRONTEND_BASE = (
   process.env.FRONTEND_BASE_URL || "http://localhost:9000"
 ).replace(/\/$/, "");
