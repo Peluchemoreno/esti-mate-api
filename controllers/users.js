@@ -1,62 +1,89 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const JWT_SECRET = require("../utils/config");
-const {
-  createUserProductCatalog,
-} = require("../services/productCopyService.js");
+const { ensureUserCatalog } = require("../services/productCopyService.js");
 const User = require("../models/user");
 const IncorrectEmailOrPasswordError = require("../errors/IncorrectEmailOrPassword.js");
 
-function createUser(req, res, next) {
-  const {
-    firstName,
-    lastName,
-    email,
-    password,
-    companyName,
-    companyAddress,
-    companyPhone,
-  } = req.body;
+async function signup(req, res, next) {
+  try {
+    console.log("create a user running.");
 
-  User.findOne({ email })
-    .then((user) => {
-      if (user) {
-        throw new Error("Please use a different email");
-      }
-      return bcrypt.hash(password, 10);
-    })
-    .then((hash) => {
-      User.create({
-        fullName: `${firstName} ${lastName}`,
-        email: email,
-        passwordHash: hash,
-        companyName,
-        companyAddress,
-        companyPhone,
-        role: "admin",
-      }).then(async (user) => {
-        try {
-          await createUserProductCatalog(user._id);
-        } catch (err) {
-          console.error("Error creating user catalog:", err);
-        }
-        console.log("just ran createUserProductCatalog", user._id);
-        res.send({
-          email: user.email,
-          name: user.fullName,
-        });
-      });
-    })
+    const {
+      firstName,
+      lastName,
+      email,
+      password,
+      companyName,
+      companyAddress,
+      companyPhone,
+    } = req.body;
 
-    .catch((err) => {
-      if (err.name === "ValidationError") {
-        return next(new Error("Invalid data sent"));
-      }
-      if (err.name === "InvalidEmailError") {
-        return next(new Error("Please try a different email address."));
-      }
-      return next(err);
+    // 1) Prevent duplicate email first
+    const existing = await User.findOne({
+      email: email.toLowerCase().trim(),
+    }).lean();
+    if (existing) {
+      return res.status(409).json({ message: "Please use a different email" });
+    }
+
+    // 2) Create the user
+    console.log("creating the user, as no user was found");
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await User.create({
+      fullName: `${String(firstName).trim()} ${String(lastName).trim()}`,
+      email: email.toLowerCase().trim(),
+      passwordHash,
+      companyName,
+      companyAddress,
+      companyPhone,
+      role: "admin",
+      subscriptionPlan: "free",
+      subscriptionStatus: "active",
+      emailVerified: false,
     });
+
+    // 3) Safety: ensure we have an id
+    if (!user || !user._id) {
+      console.error("signup: created user has no _id, aborting catalog seed");
+      return res.status(500).json({ message: "Failed to create user" });
+    }
+
+    // 4) Seed that user's catalog (await it, and PASS _id)
+    try {
+      await ensureUserCatalog(user._id);
+    } catch (seedErr) {
+      // Log but do not fail signup—let the user in; you can re-run seeding later if needed
+      console.error("ensureUserCatalog failed for user %s:", user._id, seedErr);
+    }
+
+    // 5) Issue JWT (if you do that here; if Stripe will replace later, fine)
+    const token = jwt.sign(
+      { _id: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET || "dev-secret",
+      { expiresIn: "7d" }
+    );
+
+    return res.status(200).json({
+      message: "User created",
+      user: {
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        companyName: user.companyName,
+        companyAddress: user.companyAddress,
+        companyPhone: user.companyPhone,
+        role: user.role,
+      },
+      token,
+    });
+  } catch (err) {
+    // If email uniqueness in DB fires here, normalize the message
+    if (err && err.code === 11000 && err.keyPattern && err.keyPattern.email) {
+      return res.status(409).json({ message: "Please use a different email" });
+    }
+    return next(err);
+  }
 }
 
 function login(req, res, next) {
@@ -160,7 +187,7 @@ function updateUserInfo(req, res, next) {
 }
 
 module.exports = {
-  createUser,
+  signup,
   login,
   getCurrentUser,
   uploadCompanyLogo,

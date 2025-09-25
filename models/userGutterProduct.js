@@ -11,18 +11,23 @@ const toNumber = (val) => {
 
 const UserGutterProductSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true },
     templateId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "GutterProductTemplate",
+      index: true,
+      default: null,
     },
+
     name: String,
     price: { type: Number, min: 0, set: toNumber, required: true },
     listed: Boolean,
     description: String,
     colorCode: String,
+    color: { type: String, default: null }, // null means "inherit"
     removalPricePerFoot: Number,
     unit: String,
+
     gutterGuardOptions: [
       {
         name: String,
@@ -30,6 +35,7 @@ const UserGutterProductSchema = new mongoose.Schema(
         unit: String, // usually 'foot'
       },
     ],
+
     profile: String,
     type: String,
     size: String,
@@ -40,32 +46,37 @@ const UserGutterProductSchema = new mongoose.Schema(
     canBeRepaired: Boolean,
     supportsGutterGuard: Boolean,
     canReplace1x2: Boolean,
-    // add into schema
-    slug: { type: String, index: true },
 
+    slug: { type: String, index: true },
     hasElbows: Boolean,
   },
   { timestamps: true }
 );
-// After your schema definition:
-UserGutterProductSchema.index({ userId: 1, templateId: 1 }, { unique: true });
-// fix if you still have the typo:
-// canBeRepaired: Boolean,
 
-// === Canonicalization helpers (same as template model) ===
-// === Canonicalization helpers ===
+// ❌ REMOVE the plain unique index you had earlier
+// UserGutterProductSchema.index({ userId: 1, templateId: 1 }, { unique: true });
+
+// ✅ Strong uniqueness ONLY when templateId is a real ObjectId
+UserGutterProductSchema.index(
+  { userId: 1, templateId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { templateId: { $type: "objectId" } },
+  }
+);
+
+// ===== Canonicalization helpers =====
 function _norm(s) {
   return String(s || "")
     .toLowerCase()
     .replace(/\s+/g, " ")
     .replace(/×/g, "x")
-    .replace(/[“”″]/g, '"') // normalize curly/prime quotes to straight "
+    .replace(/[“”″]/g, '"')
     .trim();
 }
 function _Title(s) {
   return s ? s[0].toUpperCase() + s.slice(1) : s;
 }
-
 function _parseMaterial(text) {
   const n = _norm(text);
   if (/\bgalvalume\b|\bgalv[-\s]?alum(?:inum)?\b|\bgalv(?:alum)?\b/.test(n))
@@ -74,8 +85,6 @@ function _parseMaterial(text) {
   if (/\baluminum\b|\balum\b|\bal\b/.test(n)) return "aluminum";
   return "aluminum";
 }
-
-// robust rectangular size: "2x3", "2 x 3", '2 in x 3 in', etc.
 function _parseRectSize(text) {
   const n = _norm(text);
   const m = n.match(
@@ -83,23 +92,18 @@ function _parseRectSize(text) {
   );
   return m ? `${m[1]}x${m[2]}` : null;
 }
-
-// round dia: 3", 4 in, 3-inch, 3″
 function _parseRoundDia(text) {
   const m = _norm(text).match(
     /(?:^|\b)(\d+(?:\.\d+)?)\s*(?:["]|in\.?|inch(?:es)?)\b/
   );
   return m ? m[1] : null;
 }
-
-// offset inches: accept 2/4/6/etc with " or in/inch/es
 function _parseOffsetInches(text) {
   const m = _norm(text).match(
     /(?:^|\b)(\d+(?:\.\d+)?)\s*(?:["]|in\.?|inch(?:es)?)\b/
   );
   return m ? m[1] : null;
 }
-
 function _parseElbowLetter(text) {
   const n = _norm(text);
   const m =
@@ -108,13 +112,11 @@ function _parseElbowLetter(text) {
     n.match(/\b([abc])\s*elbow\b/);
   return m ? m[1].toUpperCase() : null;
 }
-
 function _canonicalName(kind, sizeLabel, detail, material) {
   const mat = _Title(material);
   if (kind === "elbow") return `${sizeLabel} ${mat} ${detail} Elbow`;
   return `${sizeLabel} ${mat} ${detail}" Offset`;
 }
-
 function _canonicalSlug(kind, sizeSlug, detail, material) {
   return `downspout|${kind}|${sizeSlug}|${String(
     detail
@@ -151,7 +153,7 @@ function normalizeDownspout(doc) {
     detail = isOffset
       ? _parseOffsetInches(base)
       : _parseElbowLetter(base) || "A";
-    if (isOffset && !detail) return; // ← do NOT default; skip if inches unknown
+    if (isOffset && !detail) return;
   } else if (isBox) {
     sizeSlug = "box";
     sizeLabel = "Box";
@@ -187,7 +189,6 @@ function normalizeDownspout(doc) {
   doc.material = material;
 }
 
-// Hooks (adjust the schema name accordingly in each file)
 UserGutterProductSchema.pre("save", function (next) {
   normalizeDownspout(this);
   next();
@@ -203,11 +204,10 @@ UserGutterProductSchema.pre("findOneAndUpdate", function (next) {
   this.setUpdate(upd);
   next();
 });
-
-// (Optional) uniqueness after you verify:
-// UserGutterProductSchema.index({ userId: 1, slug: 1 }, { unique: true });
-
-// Strong uniqueness: one canonical piece per user
-UserGutterProductSchema.index({ userId: 1, slug: 1 }, { unique: true });
+// Strong uniqueness: one canonical piece per user by canonical slug
+UserGutterProductSchema.index(
+  { userId: 1, slug: 1 },
+  { unique: true, sparse: true }
+);
 
 module.exports = mongoose.model("UserGutterProduct", UserGutterProductSchema);

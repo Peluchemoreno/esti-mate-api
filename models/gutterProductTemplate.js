@@ -185,6 +185,13 @@ GutterProductTemplateSchema.pre("findOneAndUpdate", function (next) {
   next();
 });
 
+// Keep existing schema as-is...
+// Add this index to guarantee uniqueness of each canonical template
+GutterProductTemplateSchema.index(
+  { slug: 1 },
+  { unique: true, sparse: true, background: true }
+);
+
 module.exports = mongoose.model(
   "GutterProductTemplate",
   GutterProductTemplateSchema

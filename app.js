@@ -4,9 +4,9 @@ const cors = require("cors");
 require("dotenv").config();
 const mongoose = require("mongoose");
 const { errors } = require("celebrate");
+const { randomUUID } = require("crypto");
 
 const app = express();
-
 // ---- CORS (ONE place, no trailing slash) ----
 const allowedOrigins = new Set([
   "http://localhost:3000",
@@ -39,6 +39,16 @@ app.options("*", cors(corsOptions));
 
 // ---- Body parsing ----
 app.use(express.json({ limit: "150mb" }));
+
+// ---- Logging ----
+app.use((req, res, next) => {
+  req.reqId = randomUUID();
+  // /* console.log(`[req ${req.reqId}] ${req.method} ${req.originalUrl}`); */
+  res.on("finish", () => {
+    // console.log(`[req ${req.reqId}] -> ${res.statusCode}`);
+  });
+  next();
+});
 
 // ---- DB ----
 mongoose.connect(

@@ -33,7 +33,7 @@ function createProject(req, res, next) {
     siteEmail,
   }))(req.body);
 
-  Project.create({ ...fields, createdBy: userId })
+  Project.create({ ...fields, userId: userId })
     .then((data) => res.json({ data }))
     .catch(next);
 }
@@ -43,7 +43,7 @@ function getAllProjects(req, res, next) {
   if (!userId)
     return res.status(401).json({ message: "Authorization required" });
 
-  Project.find({ createdBy: userId })
+  Project.find({ userId: userId })
     .lean()
     .then((projects) => res.json({ projects })) // [] ok
     .catch(next);
@@ -57,7 +57,7 @@ function deleteProject(req, res, next) {
   if (!mongoose.isValidObjectId(projectId))
     return res.status(400).json({ message: "Invalid id" });
 
-  Project.findOneAndDelete({ _id: projectId, createdBy: userId })
+  Project.findOneAndDelete({ _id: projectId, userId: userId })
     .then((doc) => {
       if (!doc) return res.status(404).json({ message: "Not found" });
       return res.json({ message: `deleted project with ID: ${doc._id}` });
@@ -88,7 +88,7 @@ function addDiagramToProject(req, res, next) {
     accessories,
   } = req.body;
   Project.findOneAndUpdate(
-    { _id: projectId, createdBy: userId },
+    { _id: projectId, userId: userId },
     {
       $push: {
         diagrams: {
@@ -130,7 +130,7 @@ async function updateDiagram(req, res, next) {
       return res.status(400).json({ message: "Invalid id" });
 
     const updated = await Project.findOneAndUpdate(
-      { _id: projectId, createdBy: userId, "diagrams._id": diagramId },
+      { _id: projectId, userId: userId, "diagrams._id": diagramId },
       {
         $set: {
           "diagrams.$.lines": req.body.lines,
@@ -166,7 +166,7 @@ function getProjectDiagrams(req, res, next) {
   if (!mongoose.isValidObjectId(projectId))
     return res.status(400).json({ message: "Invalid id" });
 
-  Project.findOne({ _id: projectId, createdBy: userId })
+  Project.findOne({ _id: projectId, userId: userId })
     .lean()
     .then((project) => {
       if (!project) return res.status(404).json({ error: "Project not found" });
@@ -187,7 +187,7 @@ function deleteDiagram(req, res, next) {
     return res.status(400).json({ message: "Invalid id" });
 
   Project.findOneAndUpdate(
-    { _id: projectId, createdBy: userId },
+    { _id: projectId, userId: userId },
     { $pull: { diagrams: { _id: diagramId } } },
     { new: true }
   )

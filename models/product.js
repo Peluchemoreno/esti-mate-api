@@ -21,7 +21,7 @@ const productSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  createdBy: {
+  userId: {
     type: mongoose.Schema.Types.ObjectId,
     required: true,
   },

@@ -52,7 +52,7 @@ const projectSchema = new mongoose.Schema({
   siteEmail: {
     type: String,
   },
-  createdBy: {
+  userId: {
     type: mongoose.Schema.Types.ObjectId,
     required: true,
   },

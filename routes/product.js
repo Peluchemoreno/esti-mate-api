@@ -8,7 +8,7 @@ const {
 const { syncUserCatalog } = require("../controllers/catalog");
 
 router.post("/", createProduct);
-router.post("/sync", syncUserCatalog);
+// router.post("/sync", syncUserCatalog);
 router.get("/", getAllProducts);
 router.delete("/", deleteProduct);
 router.patch("/:productId", updateProduct);
