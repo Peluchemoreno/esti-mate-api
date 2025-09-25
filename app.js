@@ -22,6 +22,13 @@ app.post(
     console.log("running endpoint /webhooks/stripe");
     const sig = req.headers["stripe-signature"];
     let event;
+    console.log(
+      "[stripe] incoming webhook",
+      "sig=",
+      !!req.headers["stripe-signature"],
+      "len=",
+      req.body?.length
+    );
 
     try {
       event = stripe.webhooks.constructEvent(
@@ -34,6 +41,8 @@ app.post(
       console.error("⚠️  Webhook signature verification failed:", err.message);
       return res.status(400).send("Bad signature");
     }
+
+    console.log("[stripe] verified event:", event.type, event.id);
 
     try {
       // TODO: optional de-dupe using event.id in a small collection
