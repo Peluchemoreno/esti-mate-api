@@ -1,7 +1,14 @@
 // app.js
+require("dotenv").config();
+console.log(
+  "Stripe mode:",
+  process.env.STRIPE_SECRET_KEY?.startsWith("sk_live_") ? "LIVE" : "TEST",
+  "whsec prefix:",
+  process.env.STRIPE_WEBHOOK_SECRET?.slice(0, 6)
+);
+
 const express = require("express");
 const cors = require("cors");
-require("dotenv").config();
 const mongoose = require("mongoose");
 const { errors } = require("celebrate");
 const { randomUUID } = require("crypto");
