@@ -7,6 +7,7 @@ console.log(
   process.env.STRIPE_WEBHOOK_SECRET?.slice(0, 6)
 );
 console.log("Mongo:", process.env.MONGODB_URI, "dbName=", process.env.MONGO_DB);
+console.log("Mongo:", mongoose.connection.host, mongoose.connection.name);
 
 const express = require("express");
 const cors = require("cors");
