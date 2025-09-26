@@ -130,15 +130,9 @@ app.use((req, res, next) => {
 });
 
 // ---- DB ----
-mongoose.connect(
-  process.env.MONGODB_URI,
-  {
-    dbName: process.env.MONGO_DB,
-  },
-  () => {
-    console.log("Mongo:", mongoose.connection.host, mongoose.connection.name);
-  }
-);
+mongoose.connect(process.env.MONGODB_URI, {
+  dbName: process.env.MONGO_DB,
+});
 
 // ---- Routes ----
 const mainRouter = require("./routes/index");

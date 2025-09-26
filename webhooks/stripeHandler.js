@@ -49,6 +49,15 @@ exports.onCheckoutCompleted = async (event) => {
   const metaId = s.metadata?.appUserId;
   let user = null;
 
+  console.log(
+    "Checkout completed for customer:",
+    s.customer,
+    "email:",
+    email,
+    "metaId:",
+    metaId
+  );
+
   if (metaId && mongoose.isValidObjectId(metaId)) {
     user = await User.findById(metaId);
   }
