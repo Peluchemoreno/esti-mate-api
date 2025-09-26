@@ -130,9 +130,15 @@ app.use((req, res, next) => {
 });
 
 // ---- DB ----
-mongoose.connect(process.env.MONGODB_URI, {
-  dbName: process.env.MONGO_DB,
-});
+mongoose.connect(
+  process.env.MONGODB_URI,
+  {
+    dbName: process.env.MONGO_DB,
+  },
+  () => {
+    console.log("Mongo:", mongoose.connection.host, mongoose.connection.name);
+  }
+);
 
 // ---- Routes ----
 const mainRouter = require("./routes/index");
@@ -144,5 +150,3 @@ app.use(errors());
 // ---- Server ----
 const PORT = process.env.PORT;
 app.listen(PORT, () => console.log(`API listening on ${PORT}`));
-
-console.log("Mongo:", mongoose.connection.host, mongoose.connection.name);
