@@ -1,12 +1,5 @@
 // app.js
 require("dotenv").config();
-console.log(
-  "Stripe mode:",
-  process.env.STRIPE_SECRET_KEY?.startsWith("sk_live_") ? "LIVE" : "TEST",
-  "whsec prefix:",
-  process.env.STRIPE_WEBHOOK_SECRET?.slice(0, 6)
-);
-console.log("Mongo:", process.env.MONGODB_URI, "dbName=", process.env.MONGO_DB);
 console.log("Mongo:", mongoose.connection.host, mongoose.connection.name);
 
 const express = require("express");
