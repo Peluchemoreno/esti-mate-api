@@ -9,7 +9,6 @@ const { randomUUID } = require("crypto");
 const bodyParser = require("body-parser");
 const Stripe = require("stripe");
 const requireTier = require("./middlewares/requireTier");
-console.log("Mongo:", mongoose.connection.host, mongoose.connection.name);
 
 const app = express();
 app.set("trust proxy", 1); // if behind a proxy (e.g. Heroku, Vercel, Cloudflare)
@@ -145,3 +144,5 @@ app.use(errors());
 // ---- Server ----
 const PORT = process.env.PORT;
 app.listen(PORT, () => console.log(`API listening on ${PORT}`));
+
+console.log("Mongo:", mongoose.connection.host, mongoose.connection.name);
