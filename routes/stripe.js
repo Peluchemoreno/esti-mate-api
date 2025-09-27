@@ -2,7 +2,7 @@
 
 const express = require("express");
 const router = express.Router();
-
+const jwt = require("jsonwebtoken");
 const Stripe = require("stripe");
 const mongoose = require("mongoose");
 const authorize = require("../middlewares/auth"); // your Bearer auth middleware
