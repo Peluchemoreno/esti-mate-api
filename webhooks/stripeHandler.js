@@ -64,12 +64,32 @@ exports.onCheckoutCompleted = async (event) => {
   if (!user && email) {
     user = await User.findOne({ email });
   }
-  if (!user) return;
+  // Live buyers can pay before registering; create a minimal user by email
+  if (!user && email) {
+    user = await User.create({
+      email,
+      fullName: email.split("@")[0],
+      subscriptionPlan: "basic",
+      subscriptionStatus: "active",
+    });
+  }
+  if (!user) return; // no email → nothing we can do
 
   if (typeof s.customer === "string") {
     user.stripeCustomerId = s.customer;
     await user.save();
   }
+  // Persist customer id
+  if (typeof s.customer === "string") {
+    user.stripeCustomerId = s.customer;
+  }
+  // Persist subscription id immediately if present
+  const subscriptionId =
+    typeof s.subscription === "string" ? s.subscription : s.subscription?.id;
+  if (subscriptionId) {
+    user.stripeSubscriptionId = subscriptionId;
+  }
+  await user.save();
 };
 
 exports.onSubscriptionChange = async (event) => {
