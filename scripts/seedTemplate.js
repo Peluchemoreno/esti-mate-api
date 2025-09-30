@@ -5,6 +5,19 @@ const GutterProductTemplate = require("../models/gutterProductTemplate"); // adj
 const DB_URI = process.env.MONGODB_URI;
 const DB_NAME = process.env.MONGO_DB;
 
+function slugifyTemplate(t) {
+  // normalize safe, unique, stable
+  const type = t.type || "item";
+  const base = t.isDownspout ? "downspout" : t.profile || t.type || "";
+  const size = (t.size || "").replace(/\s+/g, "");
+  const productName = String(t.name || "")
+    .toLowerCase()
+    .replace(/[^\w"]+/g, "-")
+    .replace(/-+/g, "-")
+    .trim("-");
+  return `${type}|${base}|${size}|${productName}`;
+}
+
 async function main() {
   await mongoose.connect(DB_URI, { dbName: DB_NAME });
   console.log("🚀 Connected to db");
@@ -1349,6 +1362,13 @@ async function main() {
     },
   ];
 
+  const starterItemsWithSlugs = starterItems.map((item) => {
+    return {
+      ...item,
+      slug: slugifyTemplate(item),
+    };
+  });
+
   // 1) Create a unique index on name (once). Ignore error if exists.
   try {
     await GutterProductTemplate.collection.createIndex(
@@ -1361,7 +1381,7 @@ async function main() {
   }
 
   // 2) Upsert all items by name (replace doc to keep fields exactly as defined)
-  const ops = starterItems.map((doc) => ({
+  const ops = starterItemsWithSlugs.map((doc) => ({
     replaceOne: {
       filter: { name: doc.name },
       replacement: {
