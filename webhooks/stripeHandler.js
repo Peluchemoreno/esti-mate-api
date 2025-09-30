@@ -15,7 +15,9 @@ const Processed = mongoose.model(
 
 const PRICE_TO_PLAN = {
   // TODO: fill with your TEST price ids → plans
+  // NOTE: the price below is the live product
   price_1S9FSOLV1NkgtKMpFGrODp7C: "basic",
+
   price_1SAblmLV1NkgtKMp569jEsoF: "test",
   // FUTURE: 'price_..._medium': 'medium',
   // FUTURE: 'price_..._premium': 'premium',
