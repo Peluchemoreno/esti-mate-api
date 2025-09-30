@@ -29,6 +29,7 @@ async function ensureUserCatalog(userIdRaw) {
       {
         $setOnInsert: {
           userId,
+          slug: seed.slug,
           templateId: seed._id,
 
           // base fields
