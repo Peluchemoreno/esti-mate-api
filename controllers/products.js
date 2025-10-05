@@ -45,10 +45,11 @@ async function getAllProducts(req, res, next) {
     // NEW: allow full catalog for pricing when explicitly requested
     const scope = String(req.query.scope || "").toLowerCase();
 
-    const filter = { userId };
-    // Return ALL when scope is 'pricing' or 'all'; otherwise only listed
-    const showAll = scope === "pricing" || scope === "all";
-    if (!showAll) filter.listed = true;
+    const filter = { userId: userId };
+    if (scope !== "pricing") {
+      // default behavior (UI list): only listed items
+      filter.listed = true;
+    }
 
     const products = await UserGutterProduct.find(filter)
       .sort({ name: 1 })
