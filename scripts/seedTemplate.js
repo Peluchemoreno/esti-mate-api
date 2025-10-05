@@ -1274,58 +1274,6 @@ async function main() {
     },
 
     {
-      name: "Micro-Mesh Guard",
-      type: "guard",
-      profile: "none",
-      size: "none",
-      description: "Premium micro-mesh guard for small debris and pine needles",
-      defaultColor: "#888888",
-      defaultUnit: "foot",
-      isDownspout: false,
-      hasElbows: false,
-      supportsGutterGuard: false,
-      canWrapFascia: false,
-      canReplaceFascia: false,
-      canReplace1x2: false,
-      canBeRemoved: true,
-      canBeRepaired: false,
-    },
-    {
-      name: "Splash Block",
-      type: "accessory",
-      profile: "none",
-      size: "none",
-      description: "Ground-level block to disperse water from downspouts",
-      defaultColor: "#777777",
-      defaultUnit: "unit",
-      isDownspout: false,
-      hasElbows: false,
-      supportsGutterGuard: false,
-      canWrapFascia: false,
-      canReplaceFascia: false,
-      canReplace1x2: false,
-      canBeRemoved: true,
-      canBeRepaired: false,
-    },
-    {
-      name: "Rain Chain",
-      type: "accessory",
-      profile: "none",
-      size: "none",
-      description: "Decorative chain alternative to the traditional downspout",
-      defaultColor: "#777777",
-      defaultUnit: "unit",
-      isDownspout: false,
-      hasElbows: false,
-      supportsGutterGuard: false,
-      canWrapFascia: false,
-      canReplaceFascia: false,
-      canReplace1x2: false,
-      canBeRemoved: true,
-      canBeRepaired: false,
-    },
-
-    {
       name: "Custom Miter",
       type: "accessory",
       profile: "round",
@@ -1344,7 +1292,14 @@ async function main() {
     },
   ];
 
-  const starterItemsWithSlugs = starterItems.map((item) => {
+  const productPageItems = starterItems.map((item) => {
+    return {
+      ...item,
+      showInProductPage: true,
+    };
+  });
+
+  const starterItemsWithSlugs = productPageItems.map((item) => {
     return {
       ...item,
       slug: slugifyTemplate(item),
