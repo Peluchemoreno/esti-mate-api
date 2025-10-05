@@ -45,7 +45,7 @@ const UserGutterProductSchema = new Schema(
     name: { type: String, required: true },
     slug: String, // used for search/classification
     unit: { type: String, default: "foot" },
-    price: { type: Number, default: 0 },
+    price: { type: Number, default: 1 },
     colorCode: { type: String, default: "#000000" },
     color: { type: String, default: "#000000" },
     listed: { type: Boolean, default: true },
@@ -125,7 +125,7 @@ async function main() {
             colorCode: color,
             color,
             description: t.description || "",
-            price: 0,
+            price: 1,
             listed: !fitting,
           },
         },

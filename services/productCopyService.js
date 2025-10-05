@@ -38,7 +38,7 @@ async function ensureUserCatalog(userIdRaw) {
           profile: seed.profile,
           size: seed.size,
           colorCode: seed.defaultColor || "#000000",
-          price: seed.price ?? 0,
+          price: seed.price ?? 1,
           description: seed.description || "",
           unit: seed.defaultUnit || (fitting ? "unit" : "foot"),
           listed: fitting ? false : true,

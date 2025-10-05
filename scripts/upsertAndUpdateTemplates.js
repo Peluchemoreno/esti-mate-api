@@ -1315,24 +1315,6 @@ const newTemplates = [
     canBeRemoved: true,
     canBeRepaired: false,
   },
-  {
-    name: "Gutter Gate",
-    type: "accessory",
-    profile: "none",
-    size: "none",
-    description:
-      "Specialized one-way downspout cover for the bottom of a downspout",
-    defaultColor: "#888888",
-    defaultUnit: "unit",
-    isDownspout: false,
-    hasElbows: false,
-    supportsGutterGuard: false,
-    canWrapFascia: false,
-    canReplaceFascia: false,
-    canReplace1x2: false,
-    canBeRemoved: true,
-    canBeRepaired: false,
-  },
 
   {
     name: "Custom Miter",
@@ -1467,7 +1449,7 @@ users.forEach((user) => {
         color: tpl.defaultColor,
         unit: tpl.defaultUnit,
 
-        price: 0,
+        price: 1,
         inheritsColor: true,
         inheritsUnit: true,
 
