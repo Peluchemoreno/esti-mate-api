@@ -46,9 +46,9 @@ async function getAllProducts(req, res, next) {
     const scope = String(req.query.scope || "").toLowerCase();
 
     const filter = { userId: userId };
-    if (scope !== "pricing") {
+    if (scope === "pricing") {
       // default behavior (UI list): only listed items
-      filter.listed = true;
+      filter.listed = false;
     }
 
     const products = await UserGutterProduct.find(filter)
