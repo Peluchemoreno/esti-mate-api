@@ -35,35 +35,40 @@ async function createProduct(req, res, next) {
   }
 }
 
-// READ all for this user
-async function getAllProducts(req, res, next) {
+// controllers/products.js
+async function getAllProducts(req, res) {
   try {
     const userId = req.user?._id;
     if (!userId)
       return res.status(401).json({ message: "Authorization required" });
 
-    // NEW: allow full catalog for pricing when explicitly requested
     const scope = String(req.query.scope || "").toLowerCase();
 
-    const filter = { userId: userId };
-    if (scope === "pricing") {
-      // default behavior (UI list): only listed items
-      filter.listed = false;
+    // Default = listed-only. "pricing" or "all" = full catalog.
+    const showAll = scope === "pricing" || scope === "all";
+
+    const filter = { userId };
+    if (!showAll) {
+      filter.listed = true; // default UI list
     }
 
     const products = await UserGutterProduct.find(filter)
       .sort({ name: 1 })
       .lean();
 
+    // Helpful log (keep during rollout)
     console.log(
-      "[getAllProducts] uid=%s scope=%s count=%d",
-      userId,
+      "[getAllProducts] uid=%s scope=%s filter=%o count=%d",
+      String(userId),
       scope || "default",
+      filter,
       products.length
     );
-    return res.json({ products });
+
+    return res.status(200).send(products);
   } catch (err) {
-    next(err);
+    console.error("getAllProducts failed", err);
+    return res.status(500).json({ message: "Internal server error" });
   }
 }
 
