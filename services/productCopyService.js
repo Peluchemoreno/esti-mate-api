@@ -13,9 +13,20 @@ async function ensureUserCatalog(userIdRaw) {
   }
   const userId = new mongoose.Types.ObjectId(String(userIdRaw));
 
-  const seeds = await GutterProductTemplate.find({
-    /* archived: { $ne: true } */
-  }).lean();
+  const seeds = await GutterProductTemplate.find(
+    {},
+    {
+      _id: 1,
+      name: 1,
+      type: 1,
+      profile: 1,
+      size: 1,
+      description: 1,
+      defaultColor: 1,
+      defaultUnit: 1,
+      showInProductList: 1, // 👈 important
+    }
+  ).lean();
   const uniqueSeedCount = new Set(seeds.map((s) => String(s._id))).size;
   console.log(
     `[ensureUserCatalog] user=${userId} uniqueSeedCount=${uniqueSeedCount}`

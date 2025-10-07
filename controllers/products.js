@@ -65,6 +65,17 @@ async function getAllProducts(req, res) {
       .sort({ name: 1 })
       .lean();
 
+    // 👇 bootstrap fallback for fresh accounts
+    if ((!scope || scope === "ui") && products.length === 0) {
+      const existingCount = await UserGutterProduct.countDocuments({ userId });
+      if (existingCount === 0) {
+        await ensureUserCatalog(userId);
+        products = await UserGutterProduct.find(filter)
+          .sort({ name: 1 })
+          .lean();
+      }
+    }
+
     // Helpful log (keep during rollout)
     console.log(
       "[getAllProducts] uid=%s scope=%s filter=%o count=%d",
