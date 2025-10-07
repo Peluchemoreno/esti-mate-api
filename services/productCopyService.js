@@ -41,7 +41,7 @@ async function ensureUserCatalog(userIdRaw) {
           price: seed.price ?? 1,
           description: seed.description || "",
           unit: seed.defaultUnit || (fitting ? "unit" : "foot"),
-          listed: fitting ? false : true,
+          listed: !!seed.showInProductList,
         },
 
         // Keep $set EMPTY unless you truly need to sync; do not set updatedAt manually

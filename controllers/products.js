@@ -48,8 +48,17 @@ async function getAllProducts(req, res) {
     const showAll = scope === "pricing" || scope === "all";
 
     const filter = { userId };
-    if (!showAll) {
-      filter.listed = true; // default UI list
+
+    if (!scope || scope === "ui") {
+      // UI list only: seeded + listed
+      filter.templateId = { $ne: null };
+      filter.listed = true;
+    } else if (scope === "pricing" || scope === "all") {
+      // Full catalog for calculator/diagram; no listed filter
+      // (Keep userId filter so you only see this user's copies)
+      // Optional: if you want *everything* including custom unseeded items, leave as-is
+    } else {
+      return res.status(400).json({ error: "Invalid scope" });
     }
 
     const products = await UserGutterProduct.find(filter)

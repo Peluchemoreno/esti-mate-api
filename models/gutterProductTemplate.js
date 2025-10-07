@@ -29,6 +29,7 @@ const GutterProductTemplateSchema = new mongoose.Schema(
     hasElbows: { type: Boolean, default: false },
     // add into schema
     slug: { type: String, index: true },
+    showInProductList: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
