@@ -20,6 +20,7 @@ const UserGutterProductSchema = new mongoose.Schema(
     },
 
     name: String,
+    slug: { type: String, default: undefined },
     price: { type: Number, min: 0, set: toNumber, required: true },
     listed: Boolean,
     description: String,
@@ -51,9 +52,6 @@ const UserGutterProductSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
-// ❌ REMOVE the plain unique index you had earlier
-// UserGutterProductSchema.index({ userId: 1, templateId: 1 }, { unique: true });
 
 // ✅ Strong uniqueness ONLY when templateId is a real ObjectId
 UserGutterProductSchema.index(
@@ -203,10 +201,17 @@ UserGutterProductSchema.pre("findOneAndUpdate", function (next) {
   this.setUpdate(upd);
   next();
 });
-// Strong uniqueness: one canonical piece per user by canonical slug
+
+// ✅ Strong uniqueness by slug ONLY when slug is a non-empty string.
 UserGutterProductSchema.index(
   { userId: 1, slug: 1 },
-  { unique: true, sparse: true }
+  {
+    unique: true,
+    name: "userId_1_slug_1_unique_nonnull",
+    partialFilterExpression: {
+      slug: { $exists: true, $type: "string", $ne: "" },
+    },
+  }
 );
 
 module.exports = mongoose.model("UserGutterProduct", UserGutterProductSchema);

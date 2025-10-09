@@ -33,6 +33,7 @@ async function ensureUserCatalog(userIdRaw) {
   );
 
   for (const s of seeds) {
+    console.log(`Item: ${s.name} | showInProductList: ${s.showInProductList}`);
     const fitting = isFittingSlug(s.slug);
     const setOnInsert = {
       userId,
