@@ -4,8 +4,6 @@ const mongoose = require("mongoose");
 const { ensureUserCatalog } = require("../services/productCopyService");
 const User = require("../models/user");
 
-const USER_ID = "68e8125e132f162dd9bd3b9f";
-
 (async () => {
   await mongoose.connect(process.env.MONGODB_URI, {
     dbName: process.env.MONGO_DB || "esti-mate",
@@ -18,10 +16,9 @@ const USER_ID = "68e8125e132f162dd9bd3b9f";
 
   for (let i = 0; i < userIds.length; i++) {
     console.log(userIds[i]);
+    await ensureUserCatalog(userIds[i].id);
   }
-  console.log(userIds.length + " users");
 
-  // await ensureUserCatalog(USER_ID);
   console.log("Done");
   process.exit(0);
 })();
