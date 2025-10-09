@@ -12,7 +12,10 @@ const USER_ID = "68e8125e132f162dd9bd3b9f";
   });
   console.log("Connected");
   const users = await User.find({});
-  console.log(users);
+  const userIds = users.map((user) => {
+    return { id: user._id, email: user.email };
+  });
+  console.log(userIds);
 
   // await ensureUserCatalog(USER_ID);
   console.log("Done");
