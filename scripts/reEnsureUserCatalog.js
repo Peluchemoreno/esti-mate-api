@@ -15,7 +15,11 @@ const USER_ID = "68e8125e132f162dd9bd3b9f";
   const userIds = users.map((user) => {
     return { id: String(user._id) };
   });
-  console.log(userIds);
+
+  for (let i = 0; i < userIds.length; i++) {
+    console.log(userIds[i]);
+  }
+  console.log(userIds.length + " users");
 
   // await ensureUserCatalog(USER_ID);
   console.log("Done");
