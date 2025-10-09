@@ -2,7 +2,7 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
 const { ensureUserCatalog } = require("../services/productCopyService");
-import User from "../models/user";
+const User = require("../models/user");
 
 const USER_ID = "68e8125e132f162dd9bd3b9f";
 
@@ -13,7 +13,7 @@ const USER_ID = "68e8125e132f162dd9bd3b9f";
   console.log("Connected");
   const users = await User.find({});
   const userIds = users.map((user) => {
-    return { id: user._id, email: user.email };
+    return { id: String(user._id) };
   });
   console.log(userIds);
 
