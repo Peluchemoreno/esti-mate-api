@@ -47,7 +47,6 @@ const UserGutterProductSchema = new mongoose.Schema(
     supportsGutterGuard: Boolean,
     canReplace1x2: Boolean,
 
-    slug: { type: String, index: true },
     hasElbows: Boolean,
   },
   { timestamps: true }

@@ -32,31 +32,33 @@ async function ensureUserCatalog(userIdRaw) {
     `[ensureUserCatalog] user=${userId} uniqueSeedCount=${uniqueSeedCount}`
   );
 
-  for (const seed of seeds) {
-    const fitting = isFittingSlug(seed.slug);
+  for (const s of seeds) {
+    const fitting = isFittingSlug(s.slug);
+    const setOnInsert = {
+      userId,
+      templateId: s._id,
+      name: s.name,
+      type: s.type,
+      profile: s.profile,
+      size: s.size || "",
+      description: s.description || "",
+      colorCode: s.defaultColor || "#000000",
+      unit: s.defaultUnit || (fitting ? "unit" : "foot"),
+      price: 1,
+      listed: !!s.showInProductList,
+      createdAt: new Date(),
+    };
+
+    // only set slug if defined and non-empty
+    if (s.slug && typeof s.slug === "string") {
+      setOnInsert.slug = s.slug;
+    }
 
     await UserGutterProduct.updateOne(
-      { userId, templateId: seed._id },
+      { userId, templateId: s._id }, // ✅ unique key per user/template
       {
-        $setOnInsert: {
-          userId,
-          slug: seed.slug,
-          templateId: seed._id,
-
-          // base fields
-          name: seed.name,
-          type: seed.type,
-          profile: seed.profile,
-          size: seed.size,
-          colorCode: seed.defaultColor || "#000000",
-          price: seed.price ?? 1,
-          description: seed.description || "",
-          unit: seed.defaultUnit || (fitting ? "unit" : "foot"),
-          listed: !!seed.showInProductList,
-        },
-
-        // Keep $set EMPTY unless you truly need to sync; do not set updatedAt manually
-        $set: {},
+        $setOnInsert: setOnInsert,
+        $set: { updatedAt: new Date() },
       },
       { upsert: true }
     );
