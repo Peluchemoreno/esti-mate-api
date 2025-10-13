@@ -1,5 +1,6 @@
 // controllers/estimates.js
 const Estimate = require("../models/estimate");
+const Counter = require("../models/counter");
 
 // GET /api/estimates/next  -> next estimate number for this user
 exports.getNext = async (req, res, next) => {
@@ -12,6 +13,16 @@ exports.getNext = async (req, res, next) => {
     next(e);
   }
 };
+
+async function nextEstNo(userId) {
+  const _id = `user:${userId}:est`;
+  const doc = await Counter.findOneAndUpdate(
+    { _id },
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  ).lean();
+  return doc.seq;
+}
 
 // GET /api/estimates?projectId=...
 exports.list = async (req, res, next) => {
@@ -50,29 +61,15 @@ exports.getOne = async (req, res, next) => {
 exports.create = async (req, res, next) => {
   try {
     const userId = req.user._id?.toString();
-
-    const {
-      projectId,
-      projectSnapshot, // { name, address }
-      diagram, // { lines:[], imageData }
-      items, // [{ name, quantity, price }]
-      estimateDate,
-      estimateNumber, // optional; fallback to next
-      notes,
-    } = req.body;
-
+    const { projectId, projectSnapshot, diagram, items, estimateDate, notes } =
+      req.body;
     if (!projectId || !diagram) {
       return res.status(400).json({ error: "Missing projectId or diagram" });
     }
 
-    // compute next if not provided
-    let nextNum = estimateNumber;
-    if (nextNum == null) {
-      const count = await Estimate.countDocuments({ userId });
-      nextNum = count + 1;
-    }
+    // server is the source of truth
+    const nextNum = await nextEstNo(userId);
 
-    // total = sum(qty * price)
     const total = (Array.isArray(items) ? items : []).reduce(
       (sum, it) => sum + Number(it.quantity || 0) * Number(it.price || 0),
       0

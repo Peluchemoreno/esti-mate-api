@@ -1,6 +1,33 @@
 const mongoose = require("mongoose");
 const validator = require("validator");
 
+// NEW: meta subdoc for accessories (strict false = keep any future keys)
+const AccessoryMetaSchema = new mongoose.Schema(
+  {
+    kind: { type: String }, // 'miter' | 'endCap' | 'elbow' | 'offset'
+    type: { type: String }, // 'Strip' | 'Bay' | 'Custom'  (server canonical)
+    miterType: { type: String }, // if client sends this, we keep it too
+    degrees: { type: Number }, // for custom miter
+    code: { type: String }, // 'A' | 'B' (elbows)
+    inches: { type: String }, // '2' | '4' | '6' (offsets)
+    size: { type: String }, // '2x3' | '3x4' | '3"' | '4"'
+    profileKey: { type: String }, // e.g. 5" K-Style
+  },
+  { _id: false, strict: false, minimize: false }
+);
+
+// NEW: accessory line item schema
+const AccessoryItemSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    quantity: { type: Number, required: true },
+    price: { type: Number, required: true },
+    product: { type: Object, required: true },
+    meta: { type: AccessoryMetaSchema, default: {} },
+  },
+  { _id: false, strict: true, minimize: false }
+);
+
 const projectSchema = new mongoose.Schema({
   projectName: {
     type: String,
@@ -67,7 +94,9 @@ const projectSchema = new mongoose.Schema({
       totalFootage: Number,
       price: String,
       accessoryData: Array,
-      accessories: Object,
+      accessories: {
+        items: { type: [AccessoryItemSchema], default: [] },
+      },
       product: Object,
       elbowsBySize: Object,
       elbowLineItems: Array,
