@@ -29,8 +29,11 @@ exports.list = async (req, res, next) => {
   try {
     const userId = req.user._id?.toString();
     const { projectId } = req.query;
-    const limit =
-      Math.max(1, Math.min(100, Number(req.query.limit) || 0)) || undefined;
+    // Only apply a limit if the client provided a valid number
+    const raw = Number(req.query.limit);
+    const limit = Number.isFinite(raw)
+      ? Math.max(1, Math.min(100, Math.trunc(raw)))
+      : undefined;
     const cursor = req.query.cursor ? new Date(req.query.cursor) : null;
     const filter = { userId };
     if (projectId) filter.projectId = projectId;
