@@ -29,14 +29,30 @@ exports.list = async (req, res, next) => {
   try {
     const userId = req.user._id?.toString();
     const { projectId } = req.query;
+    const limit =
+      Math.max(1, Math.min(100, Number(req.query.limit) || 0)) || undefined;
+    const cursor = req.query.cursor ? new Date(req.query.cursor) : null;
     const filter = { userId };
     if (projectId) filter.projectId = projectId;
+    if (cursor && !isNaN(cursor.getTime())) {
+      // paginate by createdAt (desc)
+      filter.createdAt = { $lt: cursor };
+    }
 
-    const estimates = await Estimate.find(filter)
+    const q = Estimate.find(filter)
       .sort({ createdAt: -1 })
+      .select(
+        "_id estimateNumber estimateDate total projectSnapshot updatedAt createdAt"
+      ) // lean rows
       .lean();
+    if (limit) q.limit(limit);
+    const estimates = await q.exec();
 
-    res.json({ estimates });
+    const nextCursor =
+      estimates.length && limit
+        ? estimates[estimates.length - 1].createdAt
+        : null;
+    res.json({ estimates, nextCursor });
   } catch (e) {
     next(e);
   }
