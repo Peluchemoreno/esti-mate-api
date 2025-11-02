@@ -1346,6 +1346,24 @@ const starterItems = [
     canBeRepaired: false,
     showInProductList: true,
   },
+  {
+    name: "Splash Guard",
+    type: "accessory",
+    profile: "round",
+    size: '6"',
+    description: "Custom fabricated guard for gutters",
+    defaultColor: "#000000",
+    defaultUnit: "unit",
+    isDownspout: false,
+    hasElbows: false,
+    supportsGutterGuard: false,
+    canWrapFascia: false,
+    canReplaceFascia: false,
+    canReplace1x2: false,
+    canBeRemoved: true,
+    canBeRepaired: false,
+    showInProductList: true,
+  },
 ];
 
 // ---- Helpers ----------------------------------------------------------------

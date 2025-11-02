@@ -150,7 +150,7 @@ async function updateDiagram(req, res, next) {
       },
       { new: true }
     );
-    console.log(updated.diagrams[1].accessories);
+    // console.log(updated.diagrams[1].accessories);
     if (!updated)
       return res.status(404).json({ error: "No project/diagram found" });
     return res.json(updated);
