@@ -1,5 +1,5 @@
 // app.js
-require("dotenv").config();
+require("dotenv").config({ path: "/opt/api/.env" });
 
 const express = require("express");
 const cors = require("cors");
@@ -131,10 +131,12 @@ app.use((req, res, next) => {
 });
 
 // ---- DB ----
-mongoose.connect(process.env.MONGODB_URI, {
-  dbName: process.env.MONGO_DB,
-});
-
+mongoose
+  .connect(process.env.MONGODB_URI, {
+    dbName: process.env.MONGO_DB,
+  })
+  .then(() => console.log("✅ Mongo connected:", process.env.MONGO_DB))
+  .catch((err) => console.error("❌ Mongo connect error:", err));
 // ---- Routes ----
 const mainRouter = require("./routes/index");
 app.use("/", mainRouter);
