@@ -92,6 +92,7 @@ const allowedOrigins = new Set([
   "https://tryestimate.io", // <- exact match, no slash
   "https://api.tryestimate.io",
   "https://app.tryestimate.io",
+  "https://www.tryestimate.io",
 ]);
 
 const corsOptions = {
