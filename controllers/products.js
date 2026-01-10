@@ -1,6 +1,7 @@
 // controllers/products.js
 const mongoose = require("mongoose");
 const UserGutterProduct = require("../models/userGutterProduct");
+const { ensureUserCatalog } = require("../services/productCopyService");
 
 // CREATE
 async function createProduct(req, res, next) {
@@ -61,7 +62,7 @@ async function getAllProducts(req, res) {
       return res.status(400).json({ error: "Invalid scope" });
     }
 
-    const products = await UserGutterProduct.find(filter)
+    let products = await UserGutterProduct.find(filter)
       .sort({ name: 1 })
       .lean();
 
