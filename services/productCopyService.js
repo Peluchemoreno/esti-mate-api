@@ -105,7 +105,6 @@ async function ensureUserCatalog(userIdRaw) {
         colorCode: s.defaultColor || "#000000",
         unit: s.defaultUnit || (fitting ? "unit" : "foot"),
         price: 1,
-        listed: _listedComputed,
 
         createdAt: new Date(),
       };

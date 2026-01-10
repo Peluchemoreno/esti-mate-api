@@ -1407,7 +1407,7 @@ async function main() {
   // 1) ensure showInProductList is present (default true)
   const normalized = starterItems.map((item) => ({
     ...item,
-    showInProductList: item.showInProductList ?? true,
+    showInProductList: item.showInProductList ?? false,
   }));
 
   // 2) add slug
