@@ -1,5 +1,5 @@
 // app.js
-require("dotenv").config({ path: "/opt/api/.env" });
+require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");

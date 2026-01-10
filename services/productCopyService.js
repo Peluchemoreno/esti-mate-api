@@ -87,8 +87,9 @@ async function ensureUserCatalog(userIdRaw) {
 
   for (const s of seeds) {
     try {
+      const _listedComputed = s.showInProductList ?? true;
       console.log(
-        `Item: ${s.name} | showInProductList: ${s.showInProductList}`
+        `Item: ${s.name} | showInProductList(raw): ${s.showInProductList} | listed(computed): ${_listedComputed}`
       );
 
       const fitting = isFittingSlug(s.slug);
@@ -104,7 +105,8 @@ async function ensureUserCatalog(userIdRaw) {
         colorCode: s.defaultColor || "#000000",
         unit: s.defaultUnit || (fitting ? "unit" : "foot"),
         price: 1,
-        listed: !!s.showInProductList,
+        listed: _listedComputed,
+
         createdAt: new Date(),
       };
 
