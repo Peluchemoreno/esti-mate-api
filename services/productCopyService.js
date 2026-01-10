@@ -87,7 +87,7 @@ async function ensureUserCatalog(userIdRaw) {
 
   for (const s of seeds) {
     try {
-      const _listedComputed = s.showInProductList ?? true;
+      const _listedComputed = s.showInProductList === true;
       console.log(
         `Item: ${s.name} | showInProductList(raw): ${s.showInProductList} | listed(computed): ${_listedComputed}`
       );
@@ -119,7 +119,7 @@ async function ensureUserCatalog(userIdRaw) {
         { userId, templateId: s._id }, // ✅ unique key per user/template
         {
           $setOnInsert: setOnInsert,
-          $set: { updatedAt: new Date() },
+          $set: { updatedAt: new Date(), listed: _listedComputed },
         },
         { upsert: true }
       );

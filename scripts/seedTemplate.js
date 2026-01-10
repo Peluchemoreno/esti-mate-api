@@ -1391,6 +1391,18 @@ async function main() {
 
   await mongoose.connect(uri, { dbName });
   console.log("[seedTemplate] Connected:", dbName);
+  // 0) Force all non-starter templates to be hidden from the UI list.
+  // They can still exist for pricing, but should never be listed.
+  const starterNames = starterItems.map((i) => i.name);
+
+  await GutterProductTemplate.updateMany(
+    { name: { $nin: starterNames } },
+    { $set: { showInProductList: false, updatedAt: new Date() } }
+  );
+
+  console.log(
+    "[seedTemplate] Non-starter templates set to showInProductList=false"
+  );
 
   // 1) ensure showInProductList is present (default true)
   const normalized = starterItems.map((item) => ({
