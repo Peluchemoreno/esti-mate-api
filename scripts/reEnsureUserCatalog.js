@@ -1,4 +1,4 @@
-// scripts/backfillUserGutterProducts.js
+// scripts/reEnsureUserCatalog.js
 require("dotenv").config();
 const mongoose = require("mongoose");
 
@@ -16,6 +16,11 @@ function toObjectId(v) {
   return new mongoose.Types.ObjectId(String(v));
 }
 
+function computeListedFromTemplate(t) {
+  // Only explicit true should be listed in UI.
+  return t.showInProductList === true;
+}
+
 function templateToUserDoc(userId, t) {
   const fitting = isFittingSlug(t.slug || "");
   return {
@@ -28,17 +33,18 @@ function templateToUserDoc(userId, t) {
     description: t.description || "",
     colorCode: t.defaultColor || "#000000",
     unit: t.defaultUnit || (fitting ? "unit" : "foot"),
-    price: 1, // default starter price; adjust if you prefer 0
-    listed: (t.showInProductList ?? true) === true,
+    price: 1, // keep your existing behavior
     slug: typeof t.slug === "string" && t.slug ? t.slug : undefined,
     createdAt: new Date(),
+    // IMPORTANT: do NOT put listed/updatedAt here to avoid operator conflicts
   };
 }
 
-// Upsert all missing template rows for one user
-async function backfillOneUser(userIdRaw, { dryRun = false } = {}) {
+// Backfill + resync one user
+async function reEnsureOneUser(userIdRaw, { dryRun = false } = {}) {
   const userId = toObjectId(userIdRaw);
 
+  // 1) Load templates (authoritative source)
   const templates = await GutterProductTemplate.find(
     {},
     {
@@ -55,58 +61,126 @@ async function backfillOneUser(userIdRaw, { dryRun = false } = {}) {
     }
   ).lean();
 
-  // Existing per template
+  const seedsTotal = templates.length;
+
+  // 2) Existing user products by templateId
   const existing = await UserGutterProduct.find(
-    { userId },
+    { userId, templateId: { $ne: null } },
     { templateId: 1 }
   ).lean();
+
   const have = new Set(existing.map((d) => String(d.templateId)));
 
+  // 3) Determine missing templates for this user
   const missing = templates.filter((t) => !have.has(String(t._id)));
 
-  if (!missing.length) {
-    console.log(`[user ${userId}] ✓ No missing products.`);
-    return { inserted: 0 };
-  }
+  // 4) Bulk ops: upsert missing + ALWAYS resync listed for all templates
+  const now = new Date();
+
+  // A) Upserts for missing template rows
+  const upsertOps = missing.map((t) => {
+    const listedComputed = computeListedFromTemplate(t);
+    return {
+      updateOne: {
+        filter: { userId, templateId: t._id },
+        update: {
+          $setOnInsert: templateToUserDoc(userId, t),
+          // Keep listed only here (not in $setOnInsert) to prevent conflicts
+          $set: { updatedAt: now, listed: listedComputed },
+        },
+        upsert: true,
+      },
+    };
+  });
+
+  // B) Resync listed for ALL existing template rows (including ones that already exist)
+  // We do this as a second pass bulkWrite, because it’s cheaper than per-template upserts
+  // and guarantees deterministic UI listing counts.
+  const resyncOps = templates.map((t) => {
+    const listedComputed = computeListedFromTemplate(t);
+    return {
+      updateOne: {
+        filter: { userId, templateId: t._id },
+        update: { $set: { updatedAt: now, listed: listedComputed } },
+        upsert: false,
+      },
+    };
+  });
 
   if (dryRun) {
-    console.log(
-      `[user ${userId}] DRY RUN — would insert ${missing.length} products:`
+    const wouldInsert = missing.length;
+
+    // Count how many would be listed true (after sync)
+    const listedCount = templates.reduce(
+      (acc, t) => acc + (computeListedFromTemplate(t) ? 1 : 0),
+      0
     );
-    for (const t of missing) {
-      console.log(`  + ${t.name} [${t.type}/${t.profile}/${t.size || ""}]`);
+
+    console.log(
+      `[user ${userId}] DRY RUN seedsTotal=${seedsTotal} missing=${wouldInsert} listedExpected=${listedCount}`
+    );
+
+    if (missing.length) {
+      console.log(`[user ${userId}] Would insert:`);
+      for (const t of missing) console.log(`  + ${t.name}`);
     }
-    return { inserted: 0, dry: true };
+    return {
+      userId: String(userId),
+      seedsTotal,
+      inserted: 0,
+      resynced: 0,
+      listedExpected: listedCount,
+      dry: true,
+    };
   }
 
-  const ops = missing.map((t) => ({
-    updateOne: {
-      filter: { userId, templateId: t._id },
-      update: {
-        // insert all fields on first create
-        $setOnInsert: templateToUserDoc(userId, t),
-        // always bump updatedAt (but do NOT also set it in $setOnInsert)
-        $set: { updatedAt: new Date() },
-      },
-      upsert: true,
-    },
-  }));
-  const res = await UserGutterProduct.bulkWrite(ops, { ordered: false });
-  const inserted =
-    (res.upsertedCount || 0) +
-    Object.values(res.result?.nUpserted || {}).reduce((a, b) => a + b, 0);
+  let inserted = 0;
+  let resynced = 0;
 
-  console.log(`[user ${userId}] + Inserted ${missing.length} products.`);
-  return { inserted: missing.length };
+  // Run upserts first (create missing rows)
+  if (upsertOps.length) {
+    const res1 = await UserGutterProduct.bulkWrite(upsertOps, {
+      ordered: false,
+    });
+    // inserted count is upsertedCount
+    inserted = res1.upsertedCount || 0;
+  }
+
+  // Run resync pass (update listed on all rows that exist)
+  if (resyncOps.length) {
+    const res2 = await UserGutterProduct.bulkWrite(resyncOps, {
+      ordered: false,
+    });
+    // matchedCount ~ how many existed; modifiedCount ~ how many changed
+    resynced = res2.modifiedCount || 0;
+  }
+
+  // Compute expected listed count from templates
+  const listedExpected = templates.reduce(
+    (acc, t) => acc + (computeListedFromTemplate(t) ? 1 : 0),
+    0
+  );
+
+  console.log(
+    `[user ${userId}] seedsTotal=${seedsTotal} inserted=${inserted} resynced=${resynced} listedExpected=${listedExpected}`
+  );
+
+  return {
+    userId: String(userId),
+    seedsTotal,
+    inserted,
+    resynced,
+    listedExpected,
+  };
 }
 
 // --- CLI -------------------------------------------------------------------
 
 /**
  * Usage:
- *  node scripts/backfillUserGutterProducts.js --user=<userId>
- *  node scripts/backfillUserGutterProducts.js --all
- *  node scripts/backfillUserGutterProducts.js --all --dry
+ *  node scripts/reEnsureUserCatalog.js --user=<userId>
+ *  node scripts/reEnsureUserCatalog.js --all
+ *  node scripts/reEnsureUserCatalog.js --all --dry
  */
 async function main() {
   const argv = process.argv.slice(2);
@@ -117,30 +191,52 @@ async function main() {
 
   if (!useAll && !oneUserId) {
     console.error(
-      "Usage:\n  --user=<userId>  Backfill a single user\n  --all           Backfill all users\n  [--dry]         Dry run (no writes)"
+      "Usage:\n  --user=<userId>  Re-ensure a single user\n  --all           Re-ensure all users\n  [--dry]         Dry run (no writes)"
     );
     process.exit(2);
   }
 
   const uri = process.env.MONGODB_URI;
   const db = process.env.MONGO_DB || "esti-mate";
+
+  if (!uri) {
+    console.error("Missing env var MONGODB_URI");
+    process.exit(2);
+  }
+
   await mongoose.connect(uri, { dbName: db });
   console.log("Connected:", db);
 
+  let totalUsers = 0;
+  let totalInserted = 0;
+  let totalResynced = 0;
+
   try {
     if (oneUserId) {
-      await backfillOneUser(oneUserId, { dryRun });
+      totalUsers = 1;
+      const r = await reEnsureOneUser(oneUserId, { dryRun });
+      totalInserted += r.inserted || 0;
+      totalResynced += r.resynced || 0;
     } else {
       const users = await User.find({}, { _id: 1 }).lean();
+      totalUsers = users.length;
       console.log(`Scanning ${users.length} users...`);
+
       for (const u of users) {
-        await backfillOneUser(String(u._id), { dryRun });
+        const r = await reEnsureOneUser(String(u._id), { dryRun });
+        totalInserted += r.inserted || 0;
+        totalResynced += r.resynced || 0;
       }
     }
   } finally {
     await mongoose.disconnect();
-    console.log("Done.");
   }
+
+  console.log(
+    `Done. users=${totalUsers} insertedTotal=${totalInserted} resyncedTotal=${totalResynced}${
+      dryRun ? " (dry)" : ""
+    }`
+  );
 }
 
 if (require.main === module) {
@@ -150,4 +246,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { backfillOneUser };
+module.exports = { reEnsureOneUser };
