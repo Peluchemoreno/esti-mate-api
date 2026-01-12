@@ -6,9 +6,13 @@ const Counter = require("../models/counter");
 exports.getNext = async (req, res, next) => {
   try {
     const userId = req.user._id?.toString();
-    const count = await Estimate.countDocuments({ userId });
-    // Next is count+1; you can later store a counter on user if you want gaps-proof
-    res.json({ next: count + 1 });
+    const _id = `user:${userId}:est`;
+
+    // IMPORTANT: do NOT increment here — just "peek" the next number
+    const doc = await Counter.findOne({ _id }).lean();
+    const currentSeq = Number(doc?.seq || 0);
+
+    res.json({ next: currentSeq + 1 });
   } catch (e) {
     next(e);
   }

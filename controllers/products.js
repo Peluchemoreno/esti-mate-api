@@ -20,16 +20,24 @@ async function createProduct(req, res, next) {
       // keep any other fields you allow...
     } = req.body;
 
+    const chosen =
+      typeof colorCode === "string" && colorCode.trim()
+        ? colorCode.trim()
+        : "#000000";
+
     const doc = await UserGutterProduct.create({
       userId, // owner
       name,
       price, // setter will coerce "$8.00" -> 8
       description: description ?? "",
-      colorCode: colorCode ?? "#000000",
+      // ✅ canonical
+      visual: chosen,
+      // ✅ keep for backward compatibility (if schema supports it)
+      colorCode: chosen,
+      // ⚠️ do NOT touch `color` here (legacy + inherit semantics)
       unit: unit ?? "unit",
       listed: !!listed,
     });
-
     return res.json({ data: doc });
   } catch (err) {
     next(err);
@@ -127,15 +135,25 @@ async function updateProduct(req, res, next) {
       }
     }
 
-    // Normalize color: accept colorCode or color; prefer explicit colorCode if present
-    if (
-      typeof update.colorCode === "string" &&
-      update.colorCode.trim() !== ""
-    ) {
-      update.color = update.colorCode.trim();
-    }
-    delete update.colorCode;
+    // ✅ Canonical color write:
+    // - visual is the source of truth
+    // - accept colorCode as legacy input
+    // - DO NOT write into `color` automatically (color=null means inherit)
+    const incomingVisual =
+      typeof update.visual === "string" && update.visual.trim()
+        ? update.visual.trim()
+        : typeof update.colorCode === "string" && update.colorCode.trim()
+        ? update.colorCode.trim()
+        : null;
 
+    if (incomingVisual) {
+      update.visual = incomingVisual;
+      // keep for backward compatibility (if schema supports it)
+      update.colorCode = incomingVisual;
+    }
+
+    // IMPORTANT: keep `color` exactly as the client sent it (including null),
+    // and do NOT set it from visual/colorCode.
     // Strip empty strings to avoid wiping fields accidentally
     Object.keys(update).forEach((k) => {
       if (update[k] === "") delete update[k];
@@ -157,7 +175,11 @@ async function updateProduct(req, res, next) {
     const response = {
       ...updated,
       colorCode:
-        updated.color ?? updated.colorCode ?? updated.defaultColor ?? null,
+        updated.visual ??
+        updated.color ??
+        updated.colorCode ??
+        updated.defaultColor ??
+        null,
     };
 
     return res.json(response);
