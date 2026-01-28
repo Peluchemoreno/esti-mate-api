@@ -96,7 +96,7 @@ router.post("/portal", async (req, res) => {
     return_url: `${process.env.FRONTEND_BASE_URL.replace(
       /\/$/,
       ""
-    )}/dashboard/settings`,
+    )}/dashboard/products`,
   });
   res.json({ url: session.url });
 });
