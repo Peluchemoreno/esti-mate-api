@@ -1,6 +1,6 @@
 // middleware/requireTier.js
 module.exports = function requireTier(
-  allowed = ["basic", "test", "medium", "premium"]
+  allowed = ["basic", "test", "medium", "premium", "free"]
 ) {
   return (req, res, next) => {
     const user = req.user;

@@ -65,7 +65,7 @@ const userSchema = new mongoose.Schema({
   subscriptionPlan: {
     type: String,
     enum: ["free", "basic", "premium", "test", "medium"],
-    default: "basic",
+    default: "free",
   },
   stripeCustomerId: {
     type: String,
@@ -85,8 +85,9 @@ const userSchema = new mongoose.Schema({
       "unpaid",
       "incomplete",
       "incomplete_expired",
+      "disabled",
     ],
-    default: "active",
+    default: "disabled",
   },
   subscription: {
     priceId: { type: String, default: null },

@@ -71,8 +71,8 @@ exports.onCheckoutCompleted = async (event) => {
     user = await User.create({
       email,
       fullName: email.split("@")[0],
-      subscriptionPlan: "basic",
-      subscriptionStatus: "active",
+      subscriptionPlan: "free",
+      subscriptionStatus: "disabled",
     });
   }
   if (!user) return; // no email → nothing we can do

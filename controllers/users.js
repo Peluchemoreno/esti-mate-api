@@ -37,8 +37,8 @@ async function signup(req, res, next) {
       companyAddress,
       companyPhone,
       role: "admin",
-      subscriptionPlan: "basic",
-      subscriptionStatus: "active",
+      subscriptionPlan: "free",
+      subscriptionStatus: "disabled",
       emailVerified: false,
     });
 
