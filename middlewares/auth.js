@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const User = require("../models/user");
 
 if (!process.env.JWT_SECRET || typeof process.env.JWT_SECRET !== "string") {
   throw new Error("JWT_SECRET missing/invalid");
