@@ -88,9 +88,9 @@ async function ensureUserCatalog(userIdRaw) {
   for (const s of seeds) {
     try {
       const _listedComputed = s.showInProductList === true;
-      console.log(
+      /* console.log(
         `Item: ${s.name} | showInProductList(raw): ${s.showInProductList} | listed(computed): ${_listedComputed}`
-      );
+      ); */
 
       const fitting = isFittingSlug(s.slug);
 
