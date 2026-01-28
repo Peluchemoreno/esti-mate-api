@@ -5,7 +5,7 @@ if (!process.env.JWT_SECRET || typeof process.env.JWT_SECRET !== "string") {
 }
 // const UnauthorizedError = require('../errors/unauthorizedError');
 
-function authorize(req, res, next) {
+async function authorize(req, res, next) {
   const auth = req.headers.authorization || "";
   if (!auth.startsWith("Bearer ")) {
     return res.status(401).json({ message: "Authorization required" });
@@ -18,6 +18,9 @@ function authorize(req, res, next) {
       return res.status(401).json({ message: "Invalid token" });
     }
     req.user = payload; // { _id, ... }
+    console.log("user payload before: ", payload);
+    req.user = await User.findById(payload._id);
+    console.log("user payload after: ", req.user);
     return next();
   } catch (err) {
     return res.status(401).json({ message: "Authorization required" });
