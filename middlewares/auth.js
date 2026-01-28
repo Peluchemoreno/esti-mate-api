@@ -18,7 +18,9 @@ async function authorize(req, res, next) {
     if (!payload || !payload._id) {
       return res.status(401).json({ message: "Invalid token" });
     }
-    req.user = await User.findById(payload._id);
+    const user = await User.findById(payload._id);
+    if (!user) return res.status(401).json({ message: "Invalid token" });
+    req.user = user;
     return next();
   } catch (err) {
     return res.status(401).json({ message: "Authorization required" });
