@@ -121,38 +121,72 @@ async function updateDiagram(req, res, next) {
   try {
     const userId = req.user?._id;
     const { projectId, diagramId } = req.params;
+
     if (!userId)
       return res.status(401).json({ message: "Authorization required" });
+
     if (
       !mongoose.isValidObjectId(projectId) ||
       !mongoose.isValidObjectId(diagramId)
     )
       return res.status(400).json({ message: "Invalid id" });
 
+    // ---- NEW: validate includedPhotoIds if provided ----
+    let includedPhotoIdsSet = undefined;
+
+    if (Array.isArray(req.body.includedPhotoIds)) {
+      const project = await Project.findOne(
+        { _id: projectId, userId },
+        { photos: 1 }
+      ).lean();
+
+      if (!project) return res.status(404).json({ error: "Project not found" });
+
+      const validIds = new Set(
+        (project.photos || []).map((p) => String(p._id))
+      );
+
+      const filtered = req.body.includedPhotoIds.filter((id) =>
+        validIds.has(String(id))
+      );
+
+      includedPhotoIdsSet = filtered.map(
+        (id) => new mongoose.Types.ObjectId(id)
+      );
+    }
+    // ---- END NEW ----
+
+    const setBlock = {
+      "diagrams.$.lines": req.body.lines,
+      "diagrams.$.imageData": req.body.imageData,
+      "diagrams.$.createdAt": new Date(),
+      "diagrams.$.totalFootage": req.body.totalFootage,
+      "diagrams.$.price": req.body.price,
+      "diagrams.$.accessoryData": req.body.accessoryData,
+      "diagrams.$.product": req.body.product,
+      "diagrams.$.elbowsBySize": req.body.elbowsBySize,
+      "diagrams.$.elbowLineItems": req.body.elbowLineItems,
+      "diagrams.$.endCapsByProduct": req.body.endCapsByProduct,
+      "diagrams.$.mitersByProduct": req.body.mitersByProduct,
+      "diagrams.$.mixedMiters": req.body.mixedMiters,
+      "diagrams.$.accessories": req.body.accessories,
+    };
+
+    // ---- NEW: only set if provided ----
+    if (includedPhotoIdsSet !== undefined) {
+      setBlock["diagrams.$.includedPhotoIds"] = includedPhotoIdsSet;
+    }
+    // ---- END NEW ----
+
     const updated = await Project.findOneAndUpdate(
-      { _id: projectId, userId: userId, "diagrams._id": diagramId },
-      {
-        $set: {
-          "diagrams.$.lines": req.body.lines,
-          "diagrams.$.imageData": req.body.imageData,
-          "diagrams.$.createdAt": new Date(),
-          "diagrams.$.totalFootage": req.body.totalFootage,
-          "diagrams.$.price": req.body.price,
-          "diagrams.$.accessoryData": req.body.accessoryData,
-          "diagrams.$.product": req.body.product,
-          "diagrams.$.elbowsBySize": req.body.elbowsBySize,
-          "diagrams.$.elbowLineItems": req.body.elbowLineItems,
-          "diagrams.$.endCapsByProduct": req.body.endCapsByProduct,
-          "diagrams.$.mitersByProduct": req.body.mitersByProduct,
-          "diagrams.$.mixedMiters": req.body.mixedMiters,
-          "diagrams.$.accessories": req.body.accessories,
-        },
-      },
+      { _id: projectId, userId, "diagrams._id": diagramId },
+      { $set: setBlock },
       { new: true }
     );
-    // console.log(updated.diagrams[1].accessories);
+
     if (!updated)
       return res.status(404).json({ error: "No project/diagram found" });
+
     return res.json(updated);
   } catch (err) {
     return next(err);
