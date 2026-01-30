@@ -233,6 +233,57 @@ function deleteDiagram(req, res, next) {
     .catch(next);
 }
 
+async function getDiagramIncludedPhotos(req, res, next) {
+  try {
+    const userId = req.user?._id;
+    const { projectId, diagramId } = req.params;
+
+    if (!userId)
+      return res.status(401).json({ message: "Authorization required" });
+
+    if (
+      !mongoose.isValidObjectId(projectId) ||
+      !mongoose.isValidObjectId(diagramId)
+    )
+      return res.status(400).json({ message: "Invalid id" });
+
+    const project = await Project.findOne({
+      _id: projectId,
+      userId: userId,
+    }).lean();
+
+    if (!project) return res.status(404).json({ error: "Project not found" });
+
+    const diagram = (project.diagrams || []).find(
+      (d) => String(d._id) === String(diagramId)
+    );
+    if (!diagram) return res.status(404).json({ error: "Diagram not found" });
+
+    const included = (diagram.includedPhotoIds || []).map(String);
+
+    const photoById = new Map(
+      (project.photos || []).map((p) => [String(p._id), p])
+    );
+
+    const photos = included
+      .map((pid) => photoById.get(pid))
+      .filter(Boolean)
+      .map((p) => ({
+        id: String(p._id),
+        originalMeta: p.originalMeta || {},
+        originalUrl: `/dashboard/projects/${projectId}/photos/${p._id}/image`,
+        previewUrl: `/dashboard/projects/${projectId}/photos/${p._id}/image?variant=preview`,
+      }));
+
+    return res.json({
+      diagramId: String(diagramId),
+      photos,
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   createProject,
   getAllProjects,
@@ -241,4 +292,5 @@ module.exports = {
   getProjectDiagrams,
   deleteDiagram,
   updateDiagram,
+  getDiagramIncludedPhotos,
 };
