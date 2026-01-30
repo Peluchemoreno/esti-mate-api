@@ -8,6 +8,7 @@ const {
   deleteDiagram,
   updateDiagram,
 } = require("../controllers/projects");
+const projectPhotosRouter = require("./projectPhotos");
 
 router.post("/", createProject);
 router.get("/", getAllProjects);
@@ -17,4 +18,5 @@ router.get("/:projectId", getProjectDiagrams);
 router.patch("/:projectId/:diagramId/delete", deleteDiagram);
 router.patch("/:projectId/:diagramId", updateDiagram);
 
+router.use("/:projectId/photos", projectPhotosRouter);
 module.exports = router;
