@@ -28,6 +28,7 @@ const estimateSchema = new mongoose.Schema(
       id: { type: String },
       imageData: { type: String }, // data URL
       lines: { type: Array, default: [] },
+      includedPhotoIds: [{ type: String }],
     },
     projectSnapshot: {
       name: String,

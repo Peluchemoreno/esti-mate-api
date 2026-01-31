@@ -1,4 +1,5 @@
 // controllers/estimates.js
+
 const Estimate = require("../models/estimate");
 const Counter = require("../models/counter");
 
@@ -71,6 +72,10 @@ exports.getOne = async (req, res, next) => {
     const userId = req.user._id?.toString();
     const { id } = req.params;
     const est = await Estimate.findById(id).lean();
+    if (est?.diagram && !Array.isArray(est.diagram.includedPhotoIds)) {
+      est.diagram.includedPhotoIds = [];
+    }
+
     if (!est || est.userId?.toString() !== userId) {
       return res.status(404).json({ error: "Estimate not found" });
     }
@@ -86,6 +91,13 @@ exports.create = async (req, res, next) => {
     const userId = req.user._id?.toString();
     const { projectId, projectSnapshot, diagram, items, estimateDate, notes } =
       req.body;
+    console.warn(
+      "[create estimate] incoming includedPhotoIds count =",
+      Array.isArray(diagram?.includedPhotoIds)
+        ? diagram.includedPhotoIds.length
+        : 0
+    );
+
     if (!projectId || !diagram) {
       return res.status(400).json({ error: "Missing projectId or diagram" });
     }
@@ -108,7 +120,11 @@ exports.create = async (req, res, next) => {
       diagram: {
         imageData: diagram?.imageData || null,
         lines: Array.isArray(diagram?.lines) ? diagram.lines : [],
+        includedPhotoIds: Array.isArray(diagram?.includedPhotoIds)
+          ? diagram.includedPhotoIds
+          : [],
       },
+
       items: (Array.isArray(items) ? items : []).map((it) => ({
         name: it.name,
         quantity: Number(it.quantity || 0),
