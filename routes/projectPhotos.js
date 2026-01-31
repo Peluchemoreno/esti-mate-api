@@ -10,6 +10,7 @@ const {
   updateProjectPhotoAnnotations,
   streamProjectPhotoImage,
   deleteProjectPhoto,
+  createProjectPhotosBulk,
 } = require("../controllers/projectPhotos");
 
 // Phase 2: multer memory storage (no disk writes)
@@ -20,6 +21,27 @@ const upload = multer({
   limits: {
     fileSize: 12 * 1024 * 1024, // 12MB per photo (tune later)
     files: 1,
+  },
+  fileFilter: (req, file, cb) => {
+    const ok = new Set([
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/heic",
+      "image/heif",
+    ]);
+    if (!ok.has(file.mimetype)) {
+      return cb(new Error("Invalid file type. Only images are allowed."));
+    }
+    return cb(null, true);
+  },
+});
+
+const uploadBulk = multer({
+  storage,
+  limits: {
+    fileSize: 12 * 1024 * 1024, // same per-photo max as today
+    files: 10, // ✅ max 10 per request
   },
   fileFilter: (req, file, cb) => {
     const ok = new Set([
@@ -57,6 +79,8 @@ router.get("/:photoId", getProjectPhotoMeta);
 router.patch("/:photoId", updateProjectPhotoAnnotations);
 router.get("/:photoId/image", streamProjectPhotoImage);
 router.delete("/:photoId", deleteProjectPhoto);
+// ✅ new (additive)
+router.post("/bulk", uploadBulk.array("photos", 10), createProjectPhotosBulk);
 
 // Multer error handling (keeps API clean instead of crashing / generic 500)
 router.use((err, req, res, next) => {

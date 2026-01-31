@@ -200,6 +200,195 @@ async function createProjectPhoto(req, res, next) {
   }
 }
 
+// controllers/projectPhotos.js
+
+// POST /dashboard/projects/:projectId/photos/bulk
+// expects multipart/form-data with field name "photos" (up to 10)
+async function createProjectPhotosBulk(req, res, next) {
+  try {
+    const userId = req.user?._id;
+    const { projectId } = req.params;
+
+    if (!userId)
+      return res.status(401).json({ message: "Authorization required" });
+
+    const files = Array.isArray(req.files) ? req.files : [];
+    if (!files.length) {
+      return res
+        .status(400)
+        .json({ error: "Missing photo files (field: photos)" });
+    }
+
+    const project = await getOwnedProjectDoc(projectId, userId);
+    if (!project) return res.status(404).json({ error: "Project not found" });
+
+    const bucket = getBucket();
+    const now = new Date();
+
+    // We'll collect results per file, and only push successful photos into the project.
+    const results = [];
+    const createdSubdocs = []; // mongoose subdocs we push, so we can return ids after save
+    const createdGridFsIds = []; // best-effort cleanup if project.save() fails
+
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      const filename = f.originalname || `project-photo-${Date.now()}-${i}`;
+
+      // default per-file response shell
+      const r = { index: i, filename, ok: false };
+
+      let originalFileId = null;
+      let previewFileId = null;
+
+      try {
+        if (!f || !f.buffer) {
+          r.error = "Missing file buffer";
+          results.push(r);
+          continue;
+        }
+
+        // 1) upload original -> GridFS
+        const uploadStream = bucket.openUploadStream(filename, {
+          contentType: f.mimetype,
+          metadata: {
+            userId: String(userId),
+            projectId: String(projectId),
+            kind: "original",
+          },
+        });
+
+        originalFileId = await new Promise((resolve, reject) => {
+          uploadStream.on("finish", () => resolve(uploadStream.id));
+          uploadStream.on("error", reject);
+          uploadStream.end(f.buffer);
+        });
+
+        // 2) best-effort preview
+        try {
+          const previewBuf = await makePreviewBuffer(f.buffer);
+
+          const previewStream = bucket.openUploadStream(
+            `preview-${filename}.jpg`,
+            {
+              contentType: "image/jpeg",
+              metadata: {
+                userId: String(userId),
+                projectId: String(projectId),
+                kind: "preview",
+                sourceOriginalFileId: String(originalFileId),
+              },
+            }
+          );
+
+          previewFileId = await new Promise((resolve, reject) => {
+            previewStream.on("finish", () => resolve(previewStream.id));
+            previewStream.on("error", reject);
+            previewStream.end(previewBuf);
+          });
+        } catch (e) {
+          previewFileId = null; // ok
+        }
+
+        // 3) Create mongoose subdoc, but DO NOT save yet
+        const subdoc = project.photos.create({
+          originalFileId: String(originalFileId),
+          previewFileId: previewFileId ? String(previewFileId) : null,
+
+          originalMeta: {
+            filename: f.originalname || null,
+            mime: f.mimetype || null,
+            width: null,
+            height: null,
+            takenAt: null,
+          },
+          annotations: {
+            version: 1,
+            items: [],
+            updatedAt: null,
+          },
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        project.photos.push(subdoc);
+        createdSubdocs.push(subdoc);
+
+        // track for cleanup if save fails
+        createdGridFsIds.push(String(originalFileId));
+        if (previewFileId) createdGridFsIds.push(String(previewFileId));
+
+        r.ok = true;
+        // we'll attach the final "photo meta" after save
+        results.push(r);
+      } catch (err) {
+        // Best-effort cleanup for THIS file’s GridFS objects (avoid orphaned files)
+        try {
+          const ids = [originalFileId, previewFileId].filter(Boolean);
+          await Promise.all(
+            ids.map(async (id) => {
+              const oid = toObjectId(String(id));
+              if (!oid) return;
+              await new Promise((resolve) =>
+                bucket.delete(oid, () => resolve())
+              );
+            })
+          );
+        } catch (_) {
+          // ignore cleanup errors intentionally
+        }
+
+        r.error = err?.message || "Upload failed";
+        results.push(r);
+      }
+    }
+
+    // If we created at least one photo subdoc, persist project once
+    if (createdSubdocs.length) {
+      try {
+        await project.save();
+      } catch (saveErr) {
+        // If saving the project fails, clean up all created GridFS files best-effort
+        try {
+          await Promise.all(
+            createdGridFsIds.map(async (idStr) => {
+              const oid = toObjectId(idStr);
+              if (!oid) return;
+              await new Promise((resolve) =>
+                bucket.delete(oid, () => resolve())
+              );
+            })
+          );
+        } catch (_) {
+          // ignore cleanup errors intentionally
+        }
+        return next(saveErr);
+      }
+
+      // After save, fill in the returned photo meta for ok results
+      // createdSubdocs are the exact subdocs we pushed, now with _id.
+      let k = 0;
+      for (let i = 0; i < results.length; i++) {
+        if (results[i].ok) {
+          const sd = createdSubdocs[k++];
+          results[i].photo = photoMetaResponse(sd);
+        }
+      }
+    }
+
+    return res.status(200).json({
+      ok: true,
+      results,
+      summary: {
+        total: results.length,
+        success: results.filter((x) => x.ok).length,
+        failed: results.filter((x) => !x.ok).length,
+      },
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 // GET /dashboard/projects/:projectId/photos/:photoId
 async function getProjectPhotoMeta(req, res, next) {
   try {
@@ -361,4 +550,5 @@ module.exports = {
   updateProjectPhotoAnnotations,
   streamProjectPhotoImage,
   deleteProjectPhoto,
+  createProjectPhotosBulk,
 };
