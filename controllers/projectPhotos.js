@@ -503,43 +503,67 @@ async function streamProjectPhotoImage(req, res, next) {
   }
 }
 
-// DELETE /dashboard/projects/:projectId/photos/:photoId
+// controllers/projectPhotos.js
+
 async function deleteProjectPhoto(req, res, next) {
   try {
     const userId = req.user?._id;
     const { projectId, photoId } = req.params;
 
-    if (!userId)
-      return res.status(401).json({ message: "Authorization required" });
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
 
     const project = await getOwnedProjectDoc(projectId, userId);
-    if (!project) return res.status(404).json({ error: "Project not found" });
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
 
-    const p = (project.photos || []).id(photoId);
-    if (!p) return res.status(404).json({ error: "Photo not found" });
+    const photo = project.photos.id(photoId);
+    if (!photo) {
+      return res.status(404).json({ error: "Photo not found" });
+    }
 
     const bucket = getBucket();
 
-    const idsToDelete = [p.originalFileId, p.previewFileId].filter(Boolean);
+    // --- 1. delete GridFS files (best-effort) ---
+    const gridIds = [photo.originalFileId, photo.previewFileId].filter(Boolean);
 
-    // Remove subdoc from project first (so metadata is gone even if GridFS cleanup fails)
-    project.photos.pull({ _id: p._id });
+    for (const id of gridIds) {
+      try {
+        const oid = toObjectId(String(id));
+        if (!oid) continue;
+        await new Promise((resolve) => bucket.delete(oid, () => resolve()));
+      } catch (_) {
+        // intentionally ignore (orphan cleanup best-effort)
+      }
+    }
+
+    // --- 2. remove photo from project.photos ---
+    photo.remove();
+
+    // --- 3. remove from ALL diagrams ---
+    let removedFromDiagrams = 0;
+    project.diagrams.forEach((d) => {
+      if (!Array.isArray(d.includedPhotoIds)) return;
+      const before = d.includedPhotoIds.length;
+      d.includedPhotoIds = d.includedPhotoIds.filter(
+        (id) => String(id) !== String(photoId)
+      );
+      if (d.includedPhotoIds.length !== before) {
+        removedFromDiagrams++;
+      }
+    });
+
     await project.save();
 
-    // Best-effort GridFS deletion (safe to attempt after metadata removal)
-    await Promise.all(
-      idsToDelete.map(async (idStr) => {
-        const oid = toObjectId(idStr);
-        if (!oid) return;
-        await new Promise((resolve) => {
-          bucket.delete(oid, () => resolve()); // ignore errors intentionally
-        });
-      })
-    );
-
-    return res.json({ ok: true });
+    return res.json({
+      ok: true,
+      deletedPhotoId: photoId,
+      removedFromDiagrams,
+    });
   } catch (err) {
-    return next(err);
+    next(err);
   }
 }
 

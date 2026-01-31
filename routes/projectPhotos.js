@@ -9,8 +9,8 @@ const {
   getProjectPhotoMeta,
   updateProjectPhotoAnnotations,
   streamProjectPhotoImage,
-  deleteProjectPhoto,
   createProjectPhotosBulk,
+  deleteProjectPhoto,
 } = require("../controllers/projectPhotos");
 
 // Phase 2: multer memory storage (no disk writes)
