@@ -6,23 +6,24 @@ const sharp = require("sharp");
 // Helpers
 // --------------------
 
-async function makePreviewBuffer(originalBuffer, mimetype) {
-  // For HEIC/HEIF: sharp can decode if libvips supports it;
-  // if not, this will throw and we'll fall back to no preview.
-  const img = sharp(originalBuffer, { failOnError: false });
-
+async function makePreviewBuffer(originalBuffer) {
   // Rotate based on EXIF so phone photos aren't sideways
-  const pipeline = img.rotate().resize({
-    width: 1280, // good mobile/PDF balance
-    withoutEnlargement: true,
-  });
-
-  // Output format choice:
-  // - webp is smaller
-  // - png is lossless but huge
-  // - jpeg is compatible
-  // We'll default to webp for previews.
-  return pipeline.webp({ quality: 80 }).toBuffer();
+  return (
+    sharp(originalBuffer, { failOnError: false })
+      .rotate()
+      // Prevent ultra-wide/ultra-tall weirdness: keep inside a box
+      .resize({
+        width: 1280,
+        height: 1280,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      // Remove alpha so previews never appear “transparent”
+      .flatten({ background: "#ffffff" })
+      // JPEG is the safest for PDF/image pipelines
+      .jpeg({ quality: 80, mozjpeg: true })
+      .toBuffer()
+  );
 }
 
 function isValidObjectId(id) {
@@ -145,13 +146,10 @@ async function createProjectPhoto(req, res, next) {
     let previewFileId = null;
 
     try {
-      const previewBuf = await makePreviewBuffer(
-        req.file.buffer,
-        req.file.mimetype
-      );
+      const previewBuf = await makePreviewBuffer(req.file.buffer);
 
-      const previewStream = bucket.openUploadStream(`preview-${filename}`, {
-        contentType: "image/webp",
+      const previewStream = bucket.openUploadStream(`preview-${filename}.jpg`, {
+        contentType: "image/jpeg",
         metadata: {
           userId: String(userId),
           projectId: String(projectId),
@@ -159,7 +157,6 @@ async function createProjectPhoto(req, res, next) {
           sourceOriginalFileId: String(fileId),
         },
       });
-
       previewFileId = await new Promise((resolve, reject) => {
         previewStream.on("finish", () => resolve(previewStream.id));
         previewStream.on("error", reject);
