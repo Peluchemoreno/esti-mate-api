@@ -62,37 +62,44 @@ async function getOwnedProjectDoc(projectId, userId) {
 function photoMetaResponse(p) {
   return {
     id: String(p._id),
-    originalMeta: p.originalMeta || {},
-    updatedAt: p.updatedAt || p.createdAt,
-    hasAnnotations: !!(
-      p.annotations &&
-      p.annotations.items &&
-      p.annotations.items.length
-    ),
+    originalMeta: p.originalMeta,
+    updatedAt: p.updatedAt,
+    hasAnnotations: Boolean(p.annotations?.items?.length),
+
+    // ✅ THIS IS THE KEY
+    annotations: p.annotations || {
+      version: 1,
+      items: [],
+      updatedAt: null,
+    },
+  };
+}
+
+function photoMetaResponseWithAnnotations(p) {
+  return {
+    ...photoMetaResponse(p),
+    annotations: p.annotations || { version: 1, items: [], updatedAt: null },
   };
 }
 
 async function listProjectPhotos(req, res, next) {
   try {
-    const userId = req.user?._id;
+    const userId = req.user?._id; // ✅ FIX: define userId
     const { projectId } = req.params;
 
-    if (!userId)
+    if (!userId) {
       return res.status(401).json({ message: "Authorization required" });
+    }
 
     const project = await getOwnedProject(projectId, userId);
     if (!project) return res.status(404).json({ error: "Project not found" });
 
-    // Phase 1 scaffold: return metadata only (no files yet)
+    // Return metadata only (fast). Keep existing shape.
     const photos = (project.photos || []).map((p) => ({
       id: String(p._id),
       originalMeta: p.originalMeta || {},
       updatedAt: p.updatedAt || p.createdAt,
-      hasAnnotations: !!(
-        p.annotations &&
-        p.annotations.items &&
-        p.annotations.items.length
-      ),
+      hasAnnotations: !!p.annotations?.items?.length,
     }));
 
     return res.json({ photos });
@@ -397,21 +404,27 @@ async function getProjectPhotoMeta(req, res, next) {
 
     if (!userId)
       return res.status(401).json({ message: "Authorization required" });
+    if (!mongoose.isValidObjectId(projectId)) {
+      return res.status(400).json({ error: "Invalid projectId" });
+    }
+    if (!mongoose.isValidObjectId(photoId)) {
+      return res.status(400).json({ error: "Invalid photoId" });
+    }
 
-    const project = await getOwnedProjectDoc(projectId, userId);
+    const project = await Project.findOne({ _id: projectId, userId });
     if (!project) return res.status(404).json({ error: "Project not found" });
 
-    const p = (project.photos || []).id(photoId);
-    if (!p) return res.status(404).json({ error: "Photo not found" });
+    const photo = (project.photos || []).id(photoId);
+    if (!photo) return res.status(404).json({ error: "Photo not found" });
 
-    return res.json({ photo: photoMetaResponse(p) });
+    // ✅ always include annotations.items
+    return res.json({ photo: photoMetaResponse(photo) });
   } catch (err) {
     return next(err);
   }
 }
 
 // PATCH /dashboard/projects/:projectId/photos/:photoId
-// body: { items: [...] }  (or { annotations: { items: [...] } })
 async function updateProjectPhotoAnnotations(req, res, next) {
   try {
     const userId = req.user?._id;
@@ -419,33 +432,52 @@ async function updateProjectPhotoAnnotations(req, res, next) {
 
     if (!userId)
       return res.status(401).json({ message: "Authorization required" });
-
-    const project = await getOwnedProjectDoc(projectId, userId);
-    if (!project) return res.status(404).json({ error: "Project not found" });
-
-    const p = (project.photos || []).id(photoId);
-    if (!p) return res.status(404).json({ error: "Photo not found" });
-
-    const items =
-      (req.body && Array.isArray(req.body.items) && req.body.items) ||
-      (req.body &&
-        req.body.annotations &&
-        Array.isArray(req.body.annotations.items) &&
-        req.body.annotations.items) ||
-      null;
-
-    if (!items) {
-      return res.status(400).json({ error: "Missing annotations items" });
+    if (!mongoose.isValidObjectId(projectId)) {
+      return res.status(400).json({ error: "Invalid projectId" });
+    }
+    if (!mongoose.isValidObjectId(photoId)) {
+      return res.status(400).json({ error: "Invalid photoId" });
     }
 
-    // Keep schema stable: write into existing annotations subdoc
-    p.annotations = p.annotations || { version: 1, items: [], updatedAt: null };
-    p.annotations.items = items;
-    p.annotations.updatedAt = new Date();
-    p.updatedAt = new Date();
+    const project = await Project.findOne({ _id: projectId, userId });
+    if (!project) return res.status(404).json({ error: "Project not found" });
+
+    const photo = (project.photos || []).id(photoId);
+    if (!photo) return res.status(404).json({ error: "Photo not found" });
+
+    const incoming =
+      (Array.isArray(req.body?.items) && req.body.items) ||
+      (Array.isArray(req.body?.annotations?.items) &&
+        req.body.annotations.items) ||
+      [];
+
+    // ✅ enforce minimum validity: must have id + type (schema requires type)
+    const cleaned = (Array.isArray(incoming) ? incoming : [])
+      .filter((it) => it && typeof it === "object")
+      .map((it) => ({
+        ...it,
+        type: it.type || it.kind, // tolerate client sending kind
+        id: it.id ? String(it.id) : undefined,
+      }))
+      .filter((it) => it.id && it.type);
+
+    if (!photo.annotations) {
+      photo.annotations = { version: 1, items: [], updatedAt: null };
+    }
+
+    photo.annotations.items = cleaned;
+    photo.annotations.updatedAt = new Date();
+    photo.updatedAt = new Date();
+
+    // ✅ ensure mongoose persists nested changes
+    project.markModified("photos");
 
     await project.save();
-    return res.json({ photo: photoMetaResponse(p) });
+
+    return res.json({
+      ok: true,
+      photo: photoMetaResponse(photo),
+    });
   } catch (err) {
     return next(err);
   }
@@ -570,9 +602,9 @@ async function deleteProjectPhoto(req, res, next) {
 module.exports = {
   listProjectPhotos,
   createProjectPhoto,
-  getProjectPhotoMeta,
-  updateProjectPhotoAnnotations,
   streamProjectPhotoImage,
   deleteProjectPhoto,
   createProjectPhotosBulk,
+  getProjectPhotoMeta,
+  updateProjectPhotoAnnotations,
 };
