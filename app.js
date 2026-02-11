@@ -9,12 +9,18 @@ const { randomUUID } = require("crypto");
 const bodyParser = require("body-parser");
 const Stripe = require("stripe");
 const requireTier = require("./middlewares/requireTier");
+const rateLimit = require("express-rate-limit");
 
 const app = express();
 app.set("trust proxy", 1); // if behind a proxy (e.g. Heroku, Vercel, Cloudflare)
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2024-06-20",
+});
+
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
 });
 
 app.post(
@@ -140,6 +146,8 @@ mongoose
 // ---- Routes ----
 const mainRouter = require("./routes/index");
 app.use("/", mainRouter);
+
+app.use("/forgot-password", forgotPasswordLimiter);
 
 // (optional) celebrate errors if you use celebrate
 app.use(errors());

@@ -26,6 +26,39 @@ async function makePreviewBuffer(originalBuffer) {
   );
 }
 
+async function getImageWHFromBuffer(buf) {
+  try {
+    const meta = await sharp(buf, { failOnError: false }).metadata();
+    let w = meta?.width ?? null;
+    let h = meta?.height ?? null;
+
+    // If EXIF orientation implies rotation, swap dimensions.
+    const o = meta?.orientation;
+    if (w && h && (o === 5 || o === 6 || o === 7 || o === 8)) {
+      const t = w;
+      w = h;
+      h = t;
+    }
+
+    return { width: w, height: h };
+  } catch {
+    return { width: null, height: null };
+  }
+}
+
+async function downloadGridFsFileToBuffer(bucket, fileIdStr) {
+  const oid = toObjectId(String(fileIdStr || ""));
+  if (!oid) return null;
+
+  return new Promise((resolve) => {
+    const chunks = [];
+    const s = bucket.openDownloadStream(oid);
+    s.on("data", (d) => chunks.push(d));
+    s.on("error", () => resolve(null));
+    s.on("end", () => resolve(Buffer.concat(chunks)));
+  });
+}
+
 function isValidObjectId(id) {
   return mongoose.isValidObjectId(id);
 }
@@ -176,6 +209,7 @@ async function createProjectPhoto(req, res, next) {
     }
 
     const now = new Date();
+    const wh = await getImageWHFromBuffer(req.file.buffer);
 
     // Append photo subdoc (schema already has these fields)
     project.photos.push({
@@ -185,10 +219,11 @@ async function createProjectPhoto(req, res, next) {
       originalMeta: {
         filename: req.file.originalname || null,
         mime: req.file.mimetype || null,
-        width: null,
-        height: null,
+        width: wh.width,
+        height: wh.height,
         takenAt: null,
       },
+
       annotations: {
         version: 1,
         items: [],
@@ -296,6 +331,8 @@ async function createProjectPhotosBulk(req, res, next) {
           previewFileId = null; // ok
         }
 
+        const wh = await getImageWHFromBuffer(f.buffer);
+
         // 3) Create mongoose subdoc, but DO NOT save yet
         const subdoc = project.photos.create({
           originalFileId: String(originalFileId),
@@ -304,8 +341,8 @@ async function createProjectPhotosBulk(req, res, next) {
           originalMeta: {
             filename: f.originalname || null,
             mime: f.mimetype || null,
-            width: null,
-            height: null,
+            width: wh.width,
+            height: wh.height,
             takenAt: null,
           },
           annotations: {
@@ -418,6 +455,38 @@ async function getProjectPhotoMeta(req, res, next) {
     if (!photo) return res.status(404).json({ error: "Photo not found" });
 
     // ✅ always include annotations.items
+    // ✅ backfill width/height if missing (best-effort), so old photos align too
+    if (
+      (!photo?.originalMeta?.width || !photo?.originalMeta?.height) &&
+      (photo?.previewFileId || photo?.originalFileId)
+    ) {
+      try {
+        const bucket = getBucket();
+
+        // Prefer preview (smaller), but ratio matches original
+        const buf =
+          (photo.previewFileId
+            ? await downloadGridFsFileToBuffer(bucket, photo.previewFileId)
+            : null) ||
+          (photo.originalFileId
+            ? await downloadGridFsFileToBuffer(bucket, photo.originalFileId)
+            : null);
+
+        if (buf) {
+          const wh = await getImageWHFromBuffer(buf);
+          if (wh.width && wh.height) {
+            photo.originalMeta = photo.originalMeta || {};
+            photo.originalMeta.width = wh.width;
+            photo.originalMeta.height = wh.height;
+            photo.updatedAt = new Date();
+            await project.save();
+          }
+        }
+      } catch (e) {
+        // best-effort only; do not fail request
+      }
+    }
+
     return res.json({ photo: photoMetaResponse(photo) });
   } catch (err) {
     return next(err);

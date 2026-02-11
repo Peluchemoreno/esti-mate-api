@@ -50,6 +50,26 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  passwordResetTokenHash: {
+    type: String,
+    default: null,
+  },
+
+  passwordResetExpiresAt: {
+    type: Date,
+    default: null,
+  },
+
+  passwordChangedAt: {
+    type: Date,
+    default: null,
+  },
+
+  mustChangePassword: {
+    type: Boolean,
+    default: false,
+  },
+
   companyName: {
     type: String,
     required: true,

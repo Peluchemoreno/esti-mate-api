@@ -6,6 +6,10 @@ const {
   getCurrentUser,
   signup,
   updateUserInfo,
+  forgotPassword,
+  resetPassword,
+  adminResetUserPassword,
+  changePassword,
 } = require("../controllers/users");
 
 const multer = require("multer");
@@ -15,6 +19,14 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 router.post("/signup", signup);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
+// admin-only (you will call manually)
+router.post("/admin/reset-user-password", authorize, adminResetUserPassword);
+
+// authenticated users
+router.post("/change-password", authorize, changePassword);
+
 router.get("/me", authorize, getCurrentUser);
 router.patch("/me", authorize, updateUserInfo);
 router.post(

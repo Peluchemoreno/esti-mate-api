@@ -3,6 +3,9 @@ const jwt = require("jsonwebtoken");
 const { ensureUserCatalog } = require("../services/productCopyService.js");
 const User = require("../models/user");
 const IncorrectEmailOrPasswordError = require("../errors/IncorrectEmailOrPassword.js");
+const crypto = require("crypto");
+const { sendPasswordResetEmail } = require("../utils/sendgrid");
+const { generateResetToken } = require("../utils/passwordReset");
 
 async function signup(req, res, next) {
   try {
@@ -97,7 +100,7 @@ function login(req, res, next) {
       const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, {
         expiresIn: "7d",
       });
-      res.send({ token });
+      res.send({ token, mustChangePassword: user.mustChangePassword });
     })
     .catch((err) => {
       if (err.message === "Incorrect email or password") {
@@ -185,6 +188,134 @@ function updateUserInfo(req, res, next) {
     });
 }
 
+// POST /forgot-password
+async function forgotPassword(req, res) {
+  const email = String(req.body.email || "")
+    .toLowerCase()
+    .trim();
+
+  // Always respond success
+  res.json({
+    message: "If an account exists, a reset email has been sent.",
+  });
+
+  const user = await User.findOne({ email });
+  if (!user) return;
+
+  const { rawToken, tokenHash } = generateResetToken();
+
+  user.passwordResetTokenHash = tokenHash;
+  user.passwordResetExpiresAt = new Date(Date.now() + 45 * 60 * 1000);
+
+  await user.save();
+
+  const resetLink = `${
+    process.env.FRONTEND_BASE_URL
+  }/reset-password?token=${rawToken}&email=${encodeURIComponent(email)}`;
+
+  try {
+    await sendPasswordResetEmail(email, resetLink);
+  } catch (err) {
+    console.error("SendGrid error:", err);
+  }
+}
+
+// POST /reset-password
+async function resetPassword(req, res) {
+  const { email, token, newPassword } = req.body;
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.status(400).json({ message: "Invalid or expired reset link." });
+  }
+
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+  if (
+    !user.passwordResetTokenHash ||
+    user.passwordResetTokenHash !== tokenHash ||
+    !user.passwordResetExpiresAt ||
+    user.passwordResetExpiresAt.getTime() < Date.now()
+  ) {
+    return res.status(400).json({ message: "Invalid or expired reset link." });
+  }
+
+  user.passwordHash = await bcrypt.hash(newPassword, 10);
+  user.passwordResetTokenHash = null;
+  user.passwordResetExpiresAt = null;
+  user.passwordChangedAt = new Date();
+
+  await user.save();
+
+  res.json({ message: "Password successfully reset." });
+}
+
+// ADMIN: Reset user password (temporary)
+async function adminResetUserPassword(req, res) {
+  if (req.user.email !== "jmcdmoreno19@aol.com") {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ message: "Email required" });
+  }
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  // generate temporary password
+  const tempPassword = Math.random().toString(36).slice(-12);
+
+  const hash = await bcrypt.hash(tempPassword, 10);
+
+  user.passwordHash = hash;
+  user.mustChangePassword = true;
+
+  await user.save();
+
+  // IMPORTANT: only YOU see this
+  return res.json({
+    temporaryPassword: tempPassword,
+    message:
+      "Temporary password generated. User must change password on login.",
+  });
+}
+
+// USER: Change own password
+async function changePassword(req, res) {
+  const userId = req.user._id;
+  const { currentPassword, newPassword } = req.body;
+
+  const user = await User.findById(userId).select("+passwordHash");
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  // If not forced, require current password
+  if (!user.mustChangePassword) {
+    const match = await bcrypt.compare(currentPassword, user.passwordHash);
+
+    if (!match) {
+      return res.status(401).json({ message: "Current password incorrect" });
+    }
+  }
+
+  const newHash = await bcrypt.hash(newPassword, 10);
+
+  user.passwordHash = newHash;
+  user.mustChangePassword = false;
+
+  await user.save();
+
+  res.json({ message: "Password updated successfully" });
+}
+
 module.exports = {
   signup,
   login,
@@ -192,4 +323,8 @@ module.exports = {
   uploadCompanyLogo,
   getCompanyLogo,
   updateUserInfo,
+  changePassword,
+  adminResetUserPassword,
+  forgotPassword,
+  resetPassword,
 };
