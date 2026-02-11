@@ -288,6 +288,60 @@ async function adminResetUserPassword(req, res) {
 
 // USER: Change own password
 async function changePassword(req, res) {
+  try {
+    const userId = req.user && req.user._id;
+    const { currentPassword, newPassword } = req.body || {};
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (
+      !newPassword ||
+      typeof newPassword !== "string" ||
+      newPassword.length < 8
+    ) {
+      return res
+        .status(400)
+        .json({ message: "New password must be at least 8 characters." });
+    }
+
+    // Ensure we have passwordHash available
+    const user = await User.findById(userId).select("+passwordHash");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // mustChangePassword might be undefined for older users; treat undefined as false
+    const mustChange = user.mustChangePassword === true;
+
+    // If user is NOT in forced-change mode, require current password
+    if (!mustChange) {
+      if (!currentPassword || typeof currentPassword !== "string") {
+        return res
+          .status(400)
+          .json({ message: "Current password is required." });
+      }
+
+      const match = await bcrypt.compare(currentPassword, user.passwordHash);
+
+      if (!match) {
+        return res.status(401).json({ message: "Current password incorrect" });
+      }
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    user.mustChangePassword = false;
+    await user.save();
+
+    return res.json({ message: "Password updated successfully" });
+  } catch (err) {
+    console.error("changePassword error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+} // USER: Change own password
+async function changePassword(req, res) {
   const userId = req.user._id;
   const { currentPassword, newPassword } = req.body;
 
