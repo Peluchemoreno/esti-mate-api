@@ -35,14 +35,14 @@ app.post(
       "sig=",
       !!req.headers["stripe-signature"],
       "len=",
-      req.body?.length
+      req.body?.length,
     );
 
     try {
       event = stripe.webhooks.constructEvent(
         req.body, // <--- RAW BUFFER
         sig,
-        process.env.STRIPE_WEBHOOK_SECRET
+        process.env.STRIPE_WEBHOOK_SECRET,
       );
     } catch (err) {
       console.error("⚠️  Webhook signature verification failed:", err.message);
@@ -64,7 +64,7 @@ app.post(
         case "customer.subscription.updated":
         case "customer.subscription.deleted":
           await require("./webhooks/stripeHandlers").onSubscriptionChange(
-            event
+            event,
           );
           break;
 
@@ -87,7 +87,7 @@ app.post(
       console.error("Webhook handler error:", err);
       return res.sendStatus(500);
     }
-  }
+  },
 );
 
 // ---- CORS (ONE place, no trailing slash) ----
@@ -96,9 +96,12 @@ const allowedOrigins = new Set([
   "http://localhost:4000",
   "http://localhost:9000",
   "https://tryestimate.io", // <- exact match, no slash
+  "https://tryestimate.io/",
   "https://api.tryestimate.io",
   "https://app.tryestimate.io",
   "https://www.tryestimate.io",
+  "http://192.168.1.191:9000", // local network testing
+  "http://192.168.1.109:9000", // local network testing
 ]);
 
 const corsOptions = {

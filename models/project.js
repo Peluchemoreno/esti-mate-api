@@ -33,7 +33,7 @@ const PhotoAnnotationItemSchema = new mongoose.Schema(
     text: String,
     fontSize: { type: Number, default: 16 },
   },
-  { _id: false, strict: false, minimize: false }
+  { _id: false, strict: false, minimize: false },
 );
 
 const ProjectPhotoSchema = new mongoose.Schema(
@@ -58,7 +58,7 @@ const ProjectPhotoSchema = new mongoose.Schema(
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
   },
-  { minimize: false }
+  { minimize: false },
 );
 
 // NEW: meta subdoc for accessories (strict false = keep any future keys)
@@ -73,7 +73,7 @@ const AccessoryMetaSchema = new mongoose.Schema(
     size: { type: String }, // '2x3' | '3x4' | '3"' | '4"'
     profileKey: { type: String }, // e.g. 5" K-Style
   },
-  { _id: false, strict: false, minimize: false }
+  { _id: false, strict: false, minimize: false },
 );
 
 // NEW: accessory line item schema
@@ -85,29 +85,47 @@ const AccessoryItemSchema = new mongoose.Schema(
     product: { type: Object, required: true },
     meta: { type: AccessoryMetaSchema, default: {} },
   },
-  { _id: false, strict: true, minimize: false }
+  { _id: false, strict: true, minimize: false },
 );
 
 const projectSchema = new mongoose.Schema({
   projectName: {
     type: String,
+    // Version B: still "required", but auto-generated if omitted.
     required: true,
+    default: function () {
+      const addr = (this.siteAddress || "").trim();
+      if (addr) {
+        const firstPart = addr.split(",")[0].trim();
+        if (firstPart) return firstPart;
+        return addr.slice(0, 60);
+      }
+      return "New Project";
+    },
     minlength: 1,
     maxlength: 60,
   },
+
+  // Version B: link to Customer (optional for backwards compatibility)
+  customerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null,
+  },
+
+  // Billing fields are now optional
   billingName: {
     type: String,
-    required: true,
+    required: false,
     minlength: 1,
     maxlength: 60,
   },
   billingAddress: {
     type: String,
-    required: true,
+    required: false,
   },
   billingPrimaryPhone: {
     type: String,
-    required: true,
+    required: false,
   },
   billingSecondaryPhone: {
     type: String,
@@ -116,14 +134,17 @@ const projectSchema = new mongoose.Schema({
     type: String,
     validate: {
       validator(v) {
-        return validator.isEmail(v);
+        if (v === undefined || v === null || v === "") return true;
+        return validator.isEmail(String(v));
       },
       message: "You must enter a valid email address.",
     },
   },
+
+  // Site fields: only siteAddress required
   siteName: {
     type: String,
-    required: true,
+    required: false,
   },
   siteAddress: {
     type: String,
@@ -131,7 +152,7 @@ const projectSchema = new mongoose.Schema({
   },
   sitePrimaryPhone: {
     type: String,
-    required: true,
+    required: false,
   },
   siteSecondaryPhone: {
     type: String,
@@ -139,6 +160,7 @@ const projectSchema = new mongoose.Schema({
   siteEmail: {
     type: String,
   },
+
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     required: true,
@@ -147,6 +169,7 @@ const projectSchema = new mongoose.Schema({
     type: Date,
     default: Date.now(),
   },
+
   diagrams: [
     {
       lines: Array,
@@ -164,13 +187,12 @@ const projectSchema = new mongoose.Schema({
       mitersByProduct: Object,
       mixedMiters: Array,
       createdAt: { type: String, default: new Date().toLocaleString() },
-      // NEW: photo ids (Project.photos._id) to include in PDF for this diagram
       includedPhotoIds: { type: [String], default: [] },
     },
   ],
+
   photos: { type: [ProjectPhotoSchema], default: [] },
 });
 
 const Project = mongoose.model("project", projectSchema);
-
 module.exports = Project;

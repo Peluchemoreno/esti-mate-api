@@ -7,12 +7,22 @@ function createProject(req, res, next) {
   if (!userId)
     return res.status(401).json({ message: "Authorization required" });
 
+  // Version B: minimal create support
+  if (
+    !req.body?.siteAddress ||
+    String(req.body.siteAddress).trim().length === 0
+  ) {
+    return res.status(400).json({ message: "siteAddress is required" });
+  }
+
   const fields = (({
     projectName,
+    customerId,
     billingName,
     billingAddress,
     billingPrimaryPhone,
     billingSecondaryPhone,
+    billingSecondrayPhone, // legacy client typo support
     billingEmail,
     siteName,
     siteAddress,
@@ -21,10 +31,12 @@ function createProject(req, res, next) {
     siteEmail,
   }) => ({
     projectName,
+    customerId,
     billingName,
     billingAddress,
     billingPrimaryPhone,
-    billingSecondaryPhone,
+    // accept either spelling; store in canonical schema key
+    billingSecondaryPhone: billingSecondaryPhone ?? billingSecondrayPhone,
     billingEmail,
     siteName,
     siteAddress,
@@ -33,7 +45,7 @@ function createProject(req, res, next) {
     siteEmail,
   }))(req.body);
 
-  Project.create({ ...fields, userId: userId })
+  Project.create({ ...fields, userId })
     .then((data) => res.json({ data }))
     .catch(next);
 }
@@ -108,7 +120,7 @@ function addDiagramToProject(req, res, next) {
         },
       },
     },
-    { new: true }
+    { new: true },
   )
     .then((updated) => {
       if (!updated) return res.status(404).json({ error: "Project not found" });
@@ -137,21 +149,21 @@ async function updateDiagram(req, res, next) {
     if (Array.isArray(req.body.includedPhotoIds)) {
       const project = await Project.findOne(
         { _id: projectId, userId },
-        { photos: 1 }
+        { photos: 1 },
       ).lean();
 
       if (!project) return res.status(404).json({ error: "Project not found" });
 
       const validIds = new Set(
-        (project.photos || []).map((p) => String(p._id))
+        (project.photos || []).map((p) => String(p._id)),
       );
 
       const filtered = req.body.includedPhotoIds.filter((id) =>
-        validIds.has(String(id))
+        validIds.has(String(id)),
       );
 
       includedPhotoIdsSet = filtered.map(
-        (id) => new mongoose.Types.ObjectId(id)
+        (id) => new mongoose.Types.ObjectId(id),
       );
     }
     // ---- END NEW ----
@@ -181,7 +193,7 @@ async function updateDiagram(req, res, next) {
     const updated = await Project.findOneAndUpdate(
       { _id: projectId, userId, "diagrams._id": diagramId },
       { $set: setBlock },
-      { new: true }
+      { new: true },
     );
 
     if (!updated)
@@ -224,7 +236,7 @@ function deleteDiagram(req, res, next) {
   Project.findOneAndUpdate(
     { _id: projectId, userId: userId },
     { $pull: { diagrams: { _id: diagramId } } },
-    { new: true }
+    { new: true },
   )
     .then((updated) => {
       if (!updated) return res.status(404).json({ error: "Project not found" });
@@ -255,14 +267,14 @@ async function getDiagramIncludedPhotos(req, res, next) {
     if (!project) return res.status(404).json({ error: "Project not found" });
 
     const diagram = (project.diagrams || []).find(
-      (d) => String(d._id) === String(diagramId)
+      (d) => String(d._id) === String(diagramId),
     );
     if (!diagram) return res.status(404).json({ error: "Diagram not found" });
 
     const included = (diagram.includedPhotoIds || []).map(String);
 
     const photoById = new Map(
-      (project.photos || []).map((p) => [String(p._id), p])
+      (project.photos || []).map((p) => [String(p._id), p]),
     );
 
     const photos = included

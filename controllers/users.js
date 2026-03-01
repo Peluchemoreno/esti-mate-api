@@ -63,7 +63,7 @@ async function signup(req, res, next) {
     const token = jwt.sign(
       { _id: user._id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
 
     return res.status(200).json({
@@ -89,6 +89,7 @@ async function signup(req, res, next) {
 }
 
 function login(req, res, next) {
+  console.log("user logging in");
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -144,7 +145,7 @@ const uploadCompanyLogo = async (req, res) => {
           contentType: file.mimetype,
         },
       },
-      { new: true }
+      { new: true },
     );
 
     res.json({ message: "Logo uploaded", user: updatedUser });
@@ -177,7 +178,7 @@ function updateUserInfo(req, res, next) {
   User.findByIdAndUpdate(
     _id,
     { companyName, companyAddress, companyPhone: companyPhoneNumber },
-    { new: true }
+    { new: true },
   )
     .orFail()
     .then((data) => {

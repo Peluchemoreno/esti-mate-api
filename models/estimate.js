@@ -7,7 +7,7 @@ const estimateItemSchema = new mongoose.Schema(
     quantity: Number,
     price: Number,
   },
-  { _id: false }
+  { _id: false },
 );
 
 const estimateSchema = new mongoose.Schema(
@@ -30,12 +30,20 @@ const estimateSchema = new mongoose.Schema(
       lines: { type: Array, default: [] },
       includedPhotoIds: [{ type: String }],
     },
+
+    // ✅ legacy snapshot (do not remove)
     projectSnapshot: {
       name: String,
       address: String,
     },
+
+    // ------------------------------
+    // Version B: additive snapshots
+    // ------------------------------
+    customerSnapshot: { type: Object, default: null },
+    siteSnapshot: { type: Object, default: null },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("Estimate", estimateSchema);
