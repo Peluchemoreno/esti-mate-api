@@ -9,6 +9,7 @@ const stripeRouter = require("./stripe");
 const estimatesRouter = require("./estimates");
 const billingRouter = require("./billing");
 const requireTier = require("../middlewares/requireTier");
+const customersRouter = require("./customers");
 
 router.use("/api/estimates", estimatesRouter);
 router.use("/api/stripe", stripeRouter);
@@ -20,13 +21,23 @@ router.use(
   "/dashboard/projects",
   authorize,
   requireTier(["basic"]),
-  projectRouter
+  projectRouter,
 );
+// Version B: Customers (protected)
+router.use(
+  "/dashboard/customers",
+  authorize,
+  requireTier(["basic"]),
+  customersRouter,
+);
+
+// Optional alias to match requested paths (also protected)
+router.use("/customers", authorize, requireTier(["basic"]), customersRouter);
 router.use(
   "/dashboard/products",
   authorize,
   requireTier(["basic"]),
-  productRouter
+  productRouter,
 );
 router.post("/signin", login);
 
