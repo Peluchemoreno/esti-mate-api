@@ -128,11 +128,6 @@ const corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization"],
 };
 
-// temporary route
-app.get("/debug-sentry", (req, res) => {
-  throw new Error("Backend Sentry test error");
-});
-
 app.use((req, res, next) => {
   // helpful for proxies/caches when Origin varies
   res.setHeader("Vary", "Origin");
