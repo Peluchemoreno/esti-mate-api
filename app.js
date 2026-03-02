@@ -35,10 +35,6 @@ const forgotPasswordLimiter = rateLimit({
   max: 5,
 });
 
-// before routes
-app.use(Sentry.Handlers.requestHandler());
-app.use(Sentry.Handlers.tracingHandler());
-
 app.post(
   "/webhooks/stripe",
   bodyParser.raw({ type: "application/json" }),
@@ -174,16 +170,16 @@ app.use("/", mainRouter);
 app.use("/forgot-password", forgotPasswordLimiter);
 
 // after routes, before your error middleware
-app.use(Sentry.Handlers.errorHandler());
+Sentry.setupExpressErrorHandler(app);
 
 // (optional) celebrate errors if you use celebrate
 app.use(errors());
 
-// keep your existing error handler
-app.use((err, req, res, next) => {
-  res
-    .status(err.status || 500)
-    .json({ message: err.message || "Server error" });
+app.use(function onError(err, req, res, next) {
+  // The error id is attached to `res.sentry` to be returned
+  // and optionally displayed to the user for support.
+  res.statusCode = 500;
+  res.end(res.sentry + "\n");
 });
 
 // ---- Server ----
