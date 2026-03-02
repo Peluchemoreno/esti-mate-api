@@ -5,6 +5,8 @@
   "main": "index.js",
   "dependencies": {
     "@sendgrid/mail": "^8.1.6",
+    "@sentry/node": "^10.41.0",
+    "@sentry/tracing": "^7.120.4",
     "bcryptjs": "^2.4.3",
     "body-parser": "^2.2.0",
     "celebrate": "^15.0.3",

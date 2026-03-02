@@ -10,8 +10,22 @@ const bodyParser = require("body-parser");
 const Stripe = require("stripe");
 const requireTier = require("./middlewares/requireTier");
 const rateLimit = require("express-rate-limit");
+const Sentry = require("@sentry/node");
+const Tracing = require("@sentry/tracing");
 
 const app = express();
+
+// after you create `app`
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV,
+  integrations: [
+    new Sentry.Integrations.Http({ tracing: true }),
+    new Tracing.Integrations.Express({ app }),
+  ],
+  tracesSampleRate: 0.1,
+});
+
 app.set("trust proxy", 1); // if behind a proxy (e.g. Heroku, Vercel, Cloudflare)
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
@@ -22,6 +36,10 @@ const forgotPasswordLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
 });
+
+// before routes
+app.use(Sentry.Handlers.requestHandler());
+app.use(Sentry.Handlers.tracingHandler());
 
 app.post(
   "/webhooks/stripe",
@@ -116,6 +134,11 @@ const corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization"],
 };
 
+// temporary route
+app.get("/debug-sentry", (req, res) => {
+  throw new Error("Backend Sentry test error");
+});
+
 app.use((req, res, next) => {
   // helpful for proxies/caches when Origin varies
   res.setHeader("Vary", "Origin");
@@ -152,8 +175,18 @@ app.use("/", mainRouter);
 
 app.use("/forgot-password", forgotPasswordLimiter);
 
+// after routes, before your error middleware
+app.use(Sentry.Handlers.errorHandler());
+
 // (optional) celebrate errors if you use celebrate
 app.use(errors());
+
+// keep your existing error handler
+app.use((err, req, res, next) => {
+  res
+    .status(err.status || 500)
+    .json({ message: err.message || "Server error" });
+});
 
 // ---- Server ----
 const PORT = process.env.PORT;
