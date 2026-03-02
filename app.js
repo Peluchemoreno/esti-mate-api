@@ -18,11 +18,9 @@ const app = express();
 // after you create `app`
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
+  sendDefaultPii: true,
   environment: process.env.NODE_ENV,
-  integrations: [
-    new Sentry.Integrations.Http({ tracing: true }),
-    new Tracing.Integrations.Express({ app }),
-  ],
+
   tracesSampleRate: 0.1,
 });
 
