@@ -9,8 +9,8 @@ const Processed = mongoose.model(
       type: String,
       receivedAt: { type: Date, default: Date.now },
     },
-    { versionKey: false }
-  )
+    { versionKey: false },
+  ),
 );
 
 const PRICE_TO_PLAN = {
@@ -44,6 +44,43 @@ async function alreadyProcessed(eventId) {
   }
 }
 
+// ---- Discord Admin Notifications ----
+async function notifyDiscord(title, fields = {}) {
+  try {
+    const url = process.env.DISCORD_WEBHOOK_URL;
+    if (!url) return;
+
+    const safeFields = Object.entries(fields)
+      .filter(([, v]) => v !== undefined && v !== null && v !== "")
+      .slice(0, 20)
+      .map(([k, v]) => ({
+        name: String(k),
+        value: String(v),
+        inline: true,
+      }));
+
+    const payload = {
+      username: "Esti-Mate Alerts",
+      embeds: [
+        {
+          title,
+          timestamp: new Date().toISOString(),
+          fields: safeFields,
+        },
+      ],
+    };
+
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    // never break Stripe processing because Discord is down
+    console.error("notifyDiscord failed:", err?.message || err);
+  }
+}
+
 exports.onCheckoutCompleted = async (event) => {
   if (await alreadyProcessed(event.id)) return;
   const s = event.data.object;
@@ -57,7 +94,7 @@ exports.onCheckoutCompleted = async (event) => {
     "email:",
     email,
     "metaId:",
-    metaId
+    metaId,
   );
 
   if (metaId && mongoose.isValidObjectId(metaId)) {
@@ -77,21 +114,27 @@ exports.onCheckoutCompleted = async (event) => {
   }
   if (!user) return; // no email → nothing we can do
 
-  if (typeof s.customer === "string") {
-    user.stripeCustomerId = s.customer;
-    await user.save();
-  }
   // Persist customer id
   if (typeof s.customer === "string") {
     user.stripeCustomerId = s.customer;
   }
+
   // Persist subscription id immediately if present
   const subscriptionId =
     typeof s.subscription === "string" ? s.subscription : s.subscription?.id;
   if (subscriptionId) {
     user.stripeSubscriptionId = subscriptionId;
   }
+
   await user.save();
+
+  await notifyDiscord("✅ Stripe: checkout.session.completed", {
+    eventId: event.id,
+    email: user.email,
+    stripeCustomerId: user.stripeCustomerId,
+    stripeSubscriptionId: user.stripeSubscriptionId,
+    mode: event.livemode ? "LIVE" : "TEST",
+  });
 };
 
 exports.onSubscriptionChange = async (event) => {
@@ -114,7 +157,7 @@ exports.onSubscriptionChange = async (event) => {
   user.subscription.productId = price?.product || user.subscription?.productId;
   user.subscription.cancelAtPeriodEnd = !!sub.cancel_at_period_end;
   user.subscription.currentPeriodStart = new Date(
-    sub.current_period_start * 1000
+    sub.current_period_start * 1000,
   );
   user.subscription.currentPeriodEnd = new Date(sub.current_period_end * 1000);
   user.subscription.trialEnd = sub.trial_end
@@ -123,6 +166,18 @@ exports.onSubscriptionChange = async (event) => {
   user.subscription.updatedAt = new Date();
 
   await user.save();
+
+  await notifyDiscord(`🔁 Stripe: ${event.type}`, {
+    eventId: event.id,
+    email: user.email,
+    stripeCustomerId: user.stripeCustomerId,
+    stripeSubscriptionId: user.stripeSubscriptionId,
+    status: sub.status,
+    plan: user.subscriptionPlan,
+    cancelAtPeriodEnd: String(!!sub.cancel_at_period_end),
+    currentPeriodEnd: user.subscription.currentPeriodEnd?.toISOString?.(),
+    mode: event.livemode ? "LIVE" : "TEST",
+  });
 };
 
 exports.onInvoicePaid = async (event) => {
@@ -130,10 +185,21 @@ exports.onInvoicePaid = async (event) => {
   const inv = event.data.object;
   const user = await User.findOne({ stripeCustomerId: inv.customer });
   if (!user) return;
+
   if (user.subscriptionStatus !== "active") {
     user.subscriptionStatus = "active";
     await user.save();
   }
+
+  await notifyDiscord("💰 Stripe: invoice.paid", {
+    eventId: event.id,
+    email: user.email,
+    invoiceId: inv.id,
+    subscriptionId: inv.subscription,
+    amountPaid: inv.amount_paid,
+    currency: inv.currency,
+    mode: event.livemode ? "LIVE" : "TEST",
+  });
 };
 
 exports.onPaymentFailed = async (event) => {
@@ -141,6 +207,18 @@ exports.onPaymentFailed = async (event) => {
   const inv = event.data.object;
   const user = await User.findOne({ stripeCustomerId: inv.customer });
   if (!user) return;
+
   user.subscriptionStatus = "past_due";
   await user.save();
+
+  await notifyDiscord("⚠️ Stripe: invoice.payment_failed", {
+    eventId: event.id,
+    email: user.email,
+    invoiceId: inv.id,
+    subscriptionId: inv.subscription,
+    amountDue: inv.amount_due,
+    currency: inv.currency,
+    attemptCount: inv.attempt_count,
+    mode: event.livemode ? "LIVE" : "TEST",
+  });
 };
