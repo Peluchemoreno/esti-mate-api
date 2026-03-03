@@ -157,7 +157,7 @@ exports.onSubscriptionChange = async (event) => {
   user.subscriptionStatus = normalize(sub.status);
 
   // optional nested dates if you added fields
-  if (!user.subscription) user.subscription = {};
+  /* if (!user.subscription) user.subscription = {};
   user.subscription.priceId = price?.id || user.subscription?.priceId;
   user.subscription.productId = price?.product || user.subscription?.productId;
   user.subscription.cancelAtPeriodEnd = !!sub.cancel_at_period_end;
@@ -168,7 +168,7 @@ exports.onSubscriptionChange = async (event) => {
   user.subscription.trialEnd = sub.trial_end
     ? new Date(sub.trial_end * 1000)
     : null;
-  user.subscription.updatedAt = new Date();
+  user.subscription.updatedAt = new Date(); */
 
   await user.save();
 
