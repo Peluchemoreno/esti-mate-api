@@ -12,7 +12,7 @@ const requireTier = require("../middlewares/requireTier");
 const customersRouter = require("./customers");
 const adminRouter = require("./admin");
 
-router.use("/admin", adminRouter);
+router.use("/admin", authorize, adminRouter);
 router.use("/api/estimates", estimatesRouter);
 router.use("/api/stripe", stripeRouter);
 router.use("/api/billing", authorize, billingRouter);

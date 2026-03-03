@@ -2,9 +2,11 @@
 const router = require("express").Router();
 const User = require("../models/user");
 const Customer = require("../models/customer");
+const Project = require("../models/project");
+const Estimate = require("../models/estimate");
 
 function requireAdmin(req, res, next) {
-  const adminCsv = process.env.ADMIN_EMAILS || "";
+  const adminCsv = process.env.ADMIN_EMAILS || "jmcdmoreno19@aol.com";
   const allowed = new Set(
     adminCsv
       .split(",")
@@ -35,8 +37,8 @@ router.get("/account-state", requireAdmin, async (req, res, next) => {
     const customerCount = await Customer.countDocuments({ userId: user._id });
 
     // You can add these later once you confirm model names:
-    // const projectCount = await Project.countDocuments({ userId: user._id });
-    // const estimateCount = await Estimate.countDocuments({ userId: user._id });
+    const projectCount = await Project.countDocuments({ userId: user._id });
+    const estimateCount = await Estimate.countDocuments({ userId: user._id });
 
     return res.json({
       account: {
@@ -55,6 +57,13 @@ router.get("/account-state", requireAdmin, async (req, res, next) => {
 
         createdAt: user.createdAt || null,
         updatedAt: user.updatedAt || null,
+      },
+      summary: {
+        hasStripeCustomer: Boolean(user.stripeCustomerId),
+        hasSubscription: Boolean(user.stripeSubscriptionId),
+        subscriptionStatus: user.subscriptionPlan
+          ? user.subscriptionStatus || "unknown"
+          : "none",
       },
       counts: {
         customers: customerCount,

@@ -249,7 +249,7 @@ app.use(function onError(err, req, res, next) {
   // The error id is attached to `res.sentry` to be returned
   // and optionally displayed to the user for support.
   res.statusCode = 500;
-  res.end(res.sentry + "\n");
+  // res.end(res.sentry + "\n");
 });
 
 /* class AppError extends Error {
@@ -261,16 +261,15 @@ app.use(function onError(err, req, res, next) {
 } */
 
 app.use((err, req, res, next) => {
-  const status = err.statusCode || err.status || 500;
+  const status = err.status || err.statusCode || 500;
 
-  // don’t leak internals to users in prod
-  const message =
-    status >= 500 ? "Server error" : err.message || "Request error";
+  // log full error server-side
+  console.error(err);
 
   res.status(status).json({
     error: {
-      message,
-      requestId: req.requestId || req.reqId || null,
+      message: status >= 500 ? "Server error" : err.message || "Request error",
+      requestId: req.requestId || null,
     },
   });
 });
