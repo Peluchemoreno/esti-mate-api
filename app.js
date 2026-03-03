@@ -63,7 +63,7 @@ function shouldNotifyDiscordForSentryEvent(event, cooldownMs = 60_000) {
 
 async function notifyDiscordSentry(event) {
   try {
-    const url = process.env.DISCORD_WEBHOOK_URL;
+    const url = process.env.DISCORD_WEBHOOK_URL_SENTRY;
     if (!url) return;
 
     // Try to extract useful info (avoid PII)
