@@ -85,7 +85,7 @@ router.post("/checkout", idempotent, async (req, res) => {
   return res.json({ url: session.url });
 });
 
-i; // POST /api/billing/portal
+// POST /api/billing/portal
 router.post("/portal", async (req, res) => {
   const userId = req.user?._id;
 
