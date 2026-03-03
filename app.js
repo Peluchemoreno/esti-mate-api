@@ -306,7 +306,7 @@ app.post(
 
         switch (event.type) {
           case "checkout.session.completed":
-            await require("./webhooks/stripeHandlers").onCheckoutCompleted(
+            await require("./webhooks/stripeHandler").onCheckoutCompleted(
               event,
             );
             break;
@@ -314,17 +314,17 @@ app.post(
           case "customer.subscription.created":
           case "customer.subscription.updated":
           case "customer.subscription.deleted":
-            await require("./webhooks/stripeHandlers").onSubscriptionChange(
+            await require("./webhooks/stripeHandler").onSubscriptionChange(
               event,
             );
             break;
 
           case "invoice.paid":
-            await require("./webhooks/stripeHandlers").onInvoicePaid(event);
+            await require("./webhooks/stripeHandler").onInvoicePaid(event);
             break;
 
           case "invoice.payment_failed":
-            await require("./webhooks/stripeHandlers").onPaymentFailed(event);
+            await require("./webhooks/stripeHandler").onPaymentFailed(event);
             break;
 
           default:

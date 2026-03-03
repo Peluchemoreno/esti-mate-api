@@ -126,6 +126,11 @@ exports.onCheckoutCompleted = async (event) => {
     user.stripeSubscriptionId = subscriptionId;
   }
 
+  if (user.stripeCustomerId && user.stripeSubscriptionId) {
+    user.subscriptionPlan = "basic"; // best guess; will be updated on subscription events
+    user.subscriptionStatus = "active"; // best guess; will be updated on subscription events
+  }
+
   await user.save();
 
   await notifyDiscord("✅ Stripe: checkout.session.completed", {
