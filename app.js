@@ -35,13 +35,29 @@ const forgotPasswordLimiter = rateLimit({
   max: 5,
 });
 
+app.use((req, res, next) => {
+  const requestId = req.headers["x-request-id"] || randomUUID();
+  req.requestId = String(requestId);
+  res.setHeader("x-request-id", req.requestId);
+
+  // Sentry scope per request
+  try {
+    const Sentry = require("@sentry/node");
+    Sentry.configureScope((scope) => scope.setTag("request_id", req.requestId));
+  } catch (_) {}
+
+  next();
+});
+
 app.post(
   "/webhooks/stripe",
   bodyParser.raw({ type: "application/json" }),
   async (req, res) => {
     console.log("running endpoint /webhooks/stripe");
+
     const sig = req.headers["stripe-signature"];
     let event;
+
     console.log(
       "[stripe] incoming webhook",
       "sig=",
@@ -50,66 +66,114 @@ app.post(
       req.body?.length,
     );
 
+    // 1) Verify signature (and report verification failures too)
     try {
       event = stripe.webhooks.constructEvent(
-        req.body, // <--- RAW BUFFER
+        req.body, // RAW BUFFER
         sig,
         process.env.STRIPE_WEBHOOK_SECRET,
       );
     } catch (err) {
+      // Tag signature failures so you can filter them
+      try {
+        Sentry.withScope((scope) => {
+          scope.setTag("stripe.webhook_stage", "signature_verification");
+          scope.setTag("stripe.has_signature_header", String(!!sig));
+          scope.captureException(err);
+        });
+      } catch (_) {}
+
       console.error("⚠️  Webhook signature verification failed:", err.message);
       return res.status(400).send("Bad signature");
     }
 
     console.log("[stripe] verified event:", event.type, event.id);
 
-    try {
-      // TODO: optional de-dupe using event.id in a small collection
+    // 2) Handle event with per-request Sentry scope (tags won't leak)
+    return Sentry.withScope(async (scope) => {
+      // Core Stripe tags
+      scope.setTag("stripe.event_type", event.type);
+      scope.setTag("stripe.event_id", event.id);
+      scope.setTag("stripe.livemode", String(event.livemode));
+      scope.setTag("stripe.webhook_stage", "handler");
 
-      switch (event.type) {
-        case "checkout.session.completed":
-          // require and call your handler here to link customer to user
-          await require("./webhooks/stripeHandlers").onCheckoutCompleted(event);
-          break;
+      const obj = event.data?.object || {};
+      const meta = obj.metadata || {};
 
-        case "customer.subscription.created":
-        case "customer.subscription.updated":
-        case "customer.subscription.deleted":
-          await require("./webhooks/stripeHandlers").onSubscriptionChange(
-            event,
-          );
-          break;
+      // Safe IDs only (no PII)
+      const stripeIds = {
+        object: obj.object || null,
+        object_id: obj.id || null,
+        customer: obj.customer || null,
+        subscription: obj.subscription || null,
+        invoice: obj.object === "invoice" ? obj.id : null,
+        checkout_session: obj.object === "checkout.session" ? obj.id : null,
+        payment_intent: obj.payment_intent || null,
+      };
 
-        case "invoice.paid":
-          await require("./webhooks/stripeHandlers").onInvoicePaid(event);
-          break;
+      // Add as tags for easy filtering + context for details
+      if (stripeIds.customer)
+        scope.setTag("stripe.customer", String(stripeIds.customer));
+      if (stripeIds.subscription)
+        scope.setTag("stripe.subscription", String(stripeIds.subscription));
+      if (stripeIds.checkout_session)
+        scope.setTag(
+          "stripe.checkout_session",
+          String(stripeIds.checkout_session),
+        );
+      if (stripeIds.invoice)
+        scope.setTag("stripe.invoice", String(stripeIds.invoice));
+      if (stripeIds.payment_intent)
+        scope.setTag("stripe.payment_intent", String(stripeIds.payment_intent));
 
-        case "invoice.payment_failed":
-          await require("./webhooks/stripeHandlers").onPaymentFailed(event);
-          break;
+      scope.setContext("stripe_ids", stripeIds);
 
-        default:
-          // log and ignore for now
-          console.log("Unhandled event:", event.type);
-          break;
-      }
+      // App-level linkage from metadata (you already set metadata.appUserId in checkout) :contentReference[oaicite:2]{index=2}
+      if (meta.appUserId) scope.setTag("app.user_id", String(meta.appUserId));
 
-      return res.sendStatus(200);
-    } catch (err) {
       try {
-        Sentry.setTag("stripe_webhook", "handler_error");
-        Sentry.setContext("stripe", {
-          eventType: event?.type,
-          eventId: event?.id,
-        });
-        Sentry.captureException(err);
-      } catch (_) {
-        // never let telemetry break webhooks
-      }
+        // TODO: optional de-dupe using event.id in a small collection
 
-      console.error("Webhook handler error:", err);
-      return res.sendStatus(500);
-    }
+        switch (event.type) {
+          case "checkout.session.completed":
+            await require("./webhooks/stripeHandlers").onCheckoutCompleted(
+              event,
+            );
+            break;
+
+          case "customer.subscription.created":
+          case "customer.subscription.updated":
+          case "customer.subscription.deleted":
+            await require("./webhooks/stripeHandlers").onSubscriptionChange(
+              event,
+            );
+            break;
+
+          case "invoice.paid":
+            await require("./webhooks/stripeHandlers").onInvoicePaid(event);
+            break;
+
+          case "invoice.payment_failed":
+            await require("./webhooks/stripeHandlers").onPaymentFailed(event);
+            break;
+
+          default:
+            console.log("Unhandled event:", event.type);
+            break;
+        }
+
+        return res.sendStatus(200);
+      } catch (err) {
+        // Capture WITH the tags/context above
+        try {
+          scope.setTag("stripe_webhook", "handler_error");
+          scope.captureException(err);
+        } catch (_) {}
+
+        console.error("Webhook handler error:", err);
+        return res.sendStatus(500);
+      }
+    });
   },
 );
 
@@ -186,6 +250,29 @@ app.use(function onError(err, req, res, next) {
   // and optionally displayed to the user for support.
   res.statusCode = 500;
   res.end(res.sentry + "\n");
+});
+
+/* class AppError extends Error {
+  constructor(message, { status = 500, code = "INTERNAL" } = {}) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+} */
+
+app.use((err, req, res, next) => {
+  const status = err.statusCode || err.status || 500;
+
+  // don’t leak internals to users in prod
+  const message =
+    status >= 500 ? "Server error" : err.message || "Request error";
+
+  res.status(status).json({
+    error: {
+      message,
+      requestId: req.requestId || req.reqId || null,
+    },
+  });
 });
 
 // ---- Server ----
