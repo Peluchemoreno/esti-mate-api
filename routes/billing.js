@@ -6,6 +6,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const mongoose = require("mongoose");
 const User = require("../models/user");
 const { randomUUID } = require("crypto");
+const Sentry = require("@sentry/node");
 
 const Idem = mongoose.model(
   "IdemRequests",
@@ -15,8 +16,8 @@ const Idem = mongoose.model(
       result: Object,
       createdAt: { type: Date, default: Date.now, expires: 3600 }, // 1h TTL
     },
-    { versionKey: false }
-  )
+    { versionKey: false },
+  ),
 );
 
 // simple idempotency middleware
@@ -69,36 +70,51 @@ router.post("/checkout", idempotent, async (req, res) => {
       allow_promotion_codes: true,
       success_url: `${process.env.FRONTEND_BASE_URL.replace(
         /\/$/,
-        ""
+        "",
       )}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_BASE_URL.replace(
         /\/$/,
-        ""
+        "",
       )}/billing/cancelled`,
       client_reference_id: String(user._id),
       metadata: { appUserId: String(user._id) },
     },
-    { idempotencyKey: idemKey }
+    { idempotencyKey: idemKey },
   );
 
   return res.json({ url: session.url });
 });
 
-// POST /api/billing/portal
+i; // POST /api/billing/portal
 router.post("/portal", async (req, res) => {
   const userId = req.user?._id;
-  const user = await User.findById(userId);
-  if (!user?.stripeCustomerId)
-    return res.status(400).json({ error: "No Stripe customer" });
 
-  const session = await stripe.billingPortal.sessions.create({
-    customer: user.stripeCustomerId,
-    return_url: `${process.env.FRONTEND_BASE_URL.replace(
-      /\/$/,
-      ""
-    )}/dashboard/projects`,
-  });
-  res.json({ url: session.url });
+  try {
+    const user = await User.findById(userId);
+    if (!user?.stripeCustomerId) {
+      return res.status(400).json({ error: "No Stripe customer" });
+    }
+
+    // Helpful context
+    Sentry.setUser({ id: String(user._id), email: user.email });
+    Sentry.setTag("billing_endpoint", "portal");
+    Sentry.setContext("stripe", { customerId: user.stripeCustomerId });
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: user.stripeCustomerId,
+      return_url: `${process.env.FRONTEND_BASE_URL.replace(
+        /\/$/,
+        "",
+      )}/dashboard/projects`,
+    });
+
+    return res.json({ url: session.url });
+  } catch (err) {
+    Sentry.captureException(err);
+    return res
+      .status(500)
+      .json({ error: "Failed to create billing portal session" });
+  }
 });
 
 module.exports = router;

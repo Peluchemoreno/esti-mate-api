@@ -18,7 +18,7 @@ const app = express();
 // after you create `app`
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
-  sendDefaultPii: true,
+  sendDefaultPii: false,
   environment: process.env.NODE_ENV,
 
   tracesSampleRate: 0.1,
@@ -96,6 +96,17 @@ app.post(
 
       return res.sendStatus(200);
     } catch (err) {
+      try {
+        Sentry.setTag("stripe_webhook", "handler_error");
+        Sentry.setContext("stripe", {
+          eventType: event?.type,
+          eventId: event?.id,
+        });
+        Sentry.captureException(err);
+      } catch (_) {
+        // never let telemetry break webhooks
+      }
+
       console.error("Webhook handler error:", err);
       return res.sendStatus(500);
     }
