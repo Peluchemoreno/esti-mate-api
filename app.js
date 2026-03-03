@@ -16,12 +16,182 @@ const Tracing = require("@sentry/tracing");
 const app = express();
 
 // after you create `app`
+
+// ---- Discord mirror for Sentry error notifications + rate limiting ----
+
+// In-memory rate limiter: key -> lastSentEpochMs
+const sentryDiscordRateLimit = new Map();
+
+// Keep memory bounded: remove old entries periodically
+setInterval(() => {
+  const now = Date.now();
+  const TTL_MS = 10 * 60 * 1000; // keep keys for ~10 minutes
+  for (const [key, last] of sentryDiscordRateLimit.entries()) {
+    if (now - last > TTL_MS) sentryDiscordRateLimit.delete(key);
+  }
+}, 60 * 1000).unref?.();
+
+/**
+ * Decide whether we should notify Discord for this Sentry event.
+ * Returns true if allowed, false if rate-limited.
+ */
+function shouldNotifyDiscordForSentryEvent(event, cooldownMs = 60_000) {
+  // Build a stable-ish fingerprint for "same error happening repeatedly"
+  const ex = event?.exception?.values?.[0];
+  const exType = ex?.type || "Error";
+  const exValue = ex?.value || "(no message)";
+  const transaction = event?.transaction || "";
+  const reqUrl = event?.request?.url || "";
+
+  // Prefer Sentry's own fingerprint if present
+  const fp =
+    Array.isArray(event?.fingerprint) && event.fingerprint.length
+      ? event.fingerprint.join("|")
+      : "";
+
+  const key =
+    fp || `${exType}|${exValue}|${transaction}|${reqUrl}`.slice(0, 400);
+
+  const now = Date.now();
+  const last = sentryDiscordRateLimit.get(key);
+
+  if (last && now - last < cooldownMs) return false;
+
+  sentryDiscordRateLimit.set(key, now);
+  return true;
+}
+
+async function notifyDiscordSentry(event) {
+  try {
+    const url = process.env.DISCORD_WEBHOOK_URL;
+    if (!url) return;
+
+    // Try to extract useful info (avoid PII)
+    const level = event.level || "error";
+    const eventId = event.event_id || null;
+
+    const ex = event.exception?.values?.[0];
+    const exType = ex?.type || "Error";
+    const exValue = ex?.value || "(no message)";
+
+    const transaction = event.transaction || null;
+    const environment = event.environment || process.env.NODE_ENV || null;
+
+    // Tags you might set elsewhere
+    const requestId = event.tags?.request_id || null;
+    const stripeType = event.tags?.["stripe.event_type"] || null;
+    const stripeEventId = event.tags?.["stripe.event_id"] || null;
+    const stripeCustomer = event.tags?.["stripe.customer"] || null;
+    const stripeSubscription = event.tags?.["stripe.subscription"] || null;
+
+    // Request context (may be missing)
+    const reqUrl = event.request?.url || null;
+    const method = event.request?.method || null;
+
+    const fields = [
+      { name: "level", value: String(level), inline: true },
+      { name: "env", value: String(environment || ""), inline: true },
+      ...(eventId
+        ? [{ name: "sentry_event_id", value: String(eventId), inline: false }]
+        : []),
+      ...(requestId
+        ? [{ name: "request_id", value: String(requestId), inline: false }]
+        : []),
+      ...(method || reqUrl
+        ? [
+            {
+              name: "request",
+              value: `${method || ""} ${reqUrl || ""}`.trim(),
+              inline: false,
+            },
+          ]
+        : []),
+      ...(transaction
+        ? [{ name: "transaction", value: String(transaction), inline: false }]
+        : []),
+      ...(stripeType
+        ? [
+            {
+              name: "stripe.event_type",
+              value: String(stripeType),
+              inline: true,
+            },
+          ]
+        : []),
+      ...(stripeEventId
+        ? [
+            {
+              name: "stripe.event_id",
+              value: String(stripeEventId),
+              inline: true,
+            },
+          ]
+        : []),
+      ...(stripeCustomer
+        ? [
+            {
+              name: "stripe.customer",
+              value: String(stripeCustomer),
+              inline: true,
+            },
+          ]
+        : []),
+      ...(stripeSubscription
+        ? [
+            {
+              name: "stripe.subscription",
+              value: String(stripeSubscription),
+              inline: true,
+            },
+          ]
+        : []),
+    ].slice(0, 20);
+
+    const payload = {
+      username: "Sentry (Esti-Mate)",
+      embeds: [
+        {
+          title: `🚨 ${exType}: ${String(exValue).slice(0, 180)}`,
+          timestamp: new Date().toISOString(),
+          fields,
+        },
+      ],
+    };
+
+    // fire-and-forget; don't block Sentry
+    fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).catch(() => {});
+  } catch (err) {
+    // never throw from here
+    console.error("notifyDiscordSentry failed:", err?.message || err);
+  }
+}
+
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
   sendDefaultPii: false,
   environment: process.env.NODE_ENV,
-
   tracesSampleRate: 0.1,
+
+  // Mirror Sentry error events to Discord (rate-limited)
+  beforeSend(event) {
+    try {
+      const level = event?.level || "error";
+
+      // Only alert on error/fatal to avoid noise
+      if (level === "error" || level === "fatal") {
+        // 1 ping per fingerprint per 60 seconds
+        if (shouldNotifyDiscordForSentryEvent(event, 60_000)) {
+          notifyDiscordSentry(event);
+        }
+      }
+    } catch (_) {}
+
+    return event; // always let Sentry send the event
+  },
 });
 
 app.set("trust proxy", 1); // if behind a proxy (e.g. Heroku, Vercel, Cloudflare)
