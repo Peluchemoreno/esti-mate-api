@@ -1,4 +1,4 @@
-// webhooks/stripeHandlers.js
+// webhooks/stripeHandler.js
 const mongoose = require("mongoose");
 const User = require("../models/user");
 const Processed = mongoose.model(
