@@ -126,15 +126,20 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ["admin", "salesperson", "homeowner"],
+    enum: ["admin", "user", "owner", "salesperson", "homeowner"],
     required: true,
   },
   createdAt: { type: Date, default: Date.now },
+  personalBusinessId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Business",
+    default: null,
+  },
 });
 
 userSchema.statics.findUserByCredentials = function findUserByCredentials(
   email,
-  password
+  password,
 ) {
   return this.findOne({ email })
     .select("+passwordHash")
@@ -142,16 +147,16 @@ userSchema.statics.findUserByCredentials = function findUserByCredentials(
       if (!user) {
         return Promise.reject(
           new IncorrectEmailOrPasswordError(
-            "Incorrect email/password combination"
-          )
+            "Incorrect email/password combination",
+          ),
         );
       }
       return bcrypt.compare(password, user.passwordHash).then((matched) => {
         if (!matched) {
           return Promise.reject(
             new IncorrectEmailOrPasswordError(
-              "Incorrect email/password combination"
-            )
+              "Incorrect email/password combination",
+            ),
           );
         }
         return user;
