@@ -25,7 +25,7 @@ async function main() {
   const batchSize = Number(process.env.BATCH_SIZE || 200);
 
   await mongoose.connect(uri, {
-    dbName: process.env.MONGODB_DB_NAME, // <-- ensure you're connecting to the right DB
+    dbName: process.env.MONGODB_DB, // <-- ensure you're connecting to the right DB
   });
   console.log("Mongoose connected:", {
     host: mongoose.connection.host,
