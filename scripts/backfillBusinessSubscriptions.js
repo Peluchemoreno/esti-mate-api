@@ -6,7 +6,7 @@ require("dotenv").config();
 
 const mongoose = require("mongoose");
 const User = require("../models/user");
-const BusinessSubscription = require("../models/BusinessSubscription");
+const BusinessSubscription = require("../models/businessSubscription");
 
 // Keep consistent with your webhook’s normalize logic
 function normalizeStatus(s) {
