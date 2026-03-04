@@ -49,9 +49,9 @@ async function main() {
     needsBackfillCount,
   });
 
-  const cursor = User.find(needsBackfillQuery)
-    .select("_id email fullName companyName personalBusinessId")
-    .cursor();
+  const cursor = User.find(needsBackfillQuery);
+  // .select("_id email fullName companyName personalBusinessId")
+  // .cursor();
 
   let processed = 0;
 
