@@ -5,6 +5,11 @@ const Customer = require("../models/customer");
 const Project = require("../models/project");
 const Estimate = require("../models/estimate");
 
+const Stripe = require("stripe");
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2024-06-20",
+});
+
 function requireAdmin(req, res, next) {
   const adminCsv = process.env.ADMIN_EMAILS || "jmcdmoreno19@aol.com";
   const allowed = new Set(
@@ -23,6 +28,7 @@ function requireAdmin(req, res, next) {
 }
 
 // GET /api/admin/account-state?email=someone@example.com
+// GET /api/admin/account-state?email=someone@example.com
 router.get("/account-state", requireAdmin, async (req, res, next) => {
   try {
     const email = String(req.query.email || "")
@@ -35,10 +41,52 @@ router.get("/account-state", requireAdmin, async (req, res, next) => {
 
     // Counts you can safely support right now (based on uploaded models)
     const customerCount = await Customer.countDocuments({ userId: user._id });
-
-    // You can add these later once you confirm model names:
     const projectCount = await Project.countDocuments({ userId: user._id });
     const estimateCount = await Estimate.countDocuments({ userId: user._id });
+
+    // ---- Stripe live subscription details (no user.subscription subobject needed) ----
+    let stripeSub = null;
+    let cancelIntent = {
+      willCancelAtPeriodEnd: false,
+      cancelAt: null,
+      currentPeriodEnd: null,
+      status: null,
+      priceId: null,
+      productId: null,
+    };
+
+    if (user.stripeSubscriptionId) {
+      try {
+        stripeSub = await stripe.subscriptions.retrieve(
+          user.stripeSubscriptionId,
+          {
+            expand: ["items.data.price"],
+          },
+        );
+
+        const item = stripeSub.items?.data?.[0];
+        const price = item?.price;
+
+        cancelIntent = {
+          willCancelAtPeriodEnd: !!stripeSub.cancel_at_period_end,
+          cancelAt: stripeSub.cancel_at
+            ? new Date(stripeSub.cancel_at * 1000)
+            : null,
+          currentPeriodEnd: stripeSub.current_period_end
+            ? new Date(stripeSub.current_period_end * 1000)
+            : null,
+          status: stripeSub.status || null,
+          priceId: price?.id || null,
+          productId: price?.product || null,
+        };
+      } catch (e) {
+        // Don't fail the endpoint if Stripe is temporarily down
+        cancelIntent = {
+          ...cancelIntent,
+          status: "unknown",
+        };
+      }
+    }
 
     return res.json({
       account: {
@@ -52,9 +100,6 @@ router.get("/account-state", requireAdmin, async (req, res, next) => {
         stripeCustomerId: user.stripeCustomerId || null,
         stripeSubscriptionId: user.stripeSubscriptionId || null,
 
-        // nested subscription (if present)
-        subscription: user.subscription || null,
-
         createdAt: user.createdAt || null,
         updatedAt: user.updatedAt || null,
       },
@@ -64,6 +109,14 @@ router.get("/account-state", requireAdmin, async (req, res, next) => {
         subscriptionStatus: user.subscriptionPlan
           ? user.subscriptionStatus || "unknown"
           : "none",
+
+        // NEW: cancellation intent + Stripe truth
+        willCancelAtPeriodEnd: cancelIntent.willCancelAtPeriodEnd,
+        cancelAt: cancelIntent.cancelAt,
+        currentPeriodEnd: cancelIntent.currentPeriodEnd,
+        stripeStatus: cancelIntent.status,
+        stripePriceId: cancelIntent.priceId,
+        stripeProductId: cancelIntent.productId,
       },
       counts: {
         customers: customerCount,
