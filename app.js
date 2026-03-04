@@ -316,7 +316,7 @@ app.post(
           case "customer.subscription.deleted":
           case "customer.subscription.paused":
           case "customer.subscription.resumed":
-            await require("./webhooks/stripeHandlers").onSubscriptionChange(
+            await require("./webhooks/stripeHandler").onSubscriptionChange(
               event,
             );
             break;
