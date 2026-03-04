@@ -129,4 +129,40 @@ router.get("/account-state", requireAdmin, async (req, res, next) => {
   }
 });
 
+// GET /admin/stripe-customers?limit=25&starting_after=cus_...
+router.get("/stripe-customers", requireAdmin, async (req, res, next) => {
+  try {
+    const limitRaw = Number(req.query.limit || 25);
+    const limit = Math.max(1, Math.min(limitRaw, 100)); // Stripe max is 100
+    const starting_after = req.query.starting_after
+      ? String(req.query.starting_after)
+      : undefined;
+
+    const list = await stripe.customers.list({
+      limit,
+      ...(starting_after ? { starting_after } : {}),
+    });
+
+    const customers = list.data || [];
+    const last = customers[customers.length - 1];
+
+    return res.json({
+      customers: customers.map((c) => ({
+        id: c.id,
+        email: c.email || null,
+        name: c.name || null,
+        created: c.created ? new Date(c.created * 1000) : null,
+        delinquent: !!c.delinquent,
+        livemode: !!c.livemode,
+      })),
+      page: {
+        has_more: !!list.has_more,
+        next_starting_after: last?.id || null,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

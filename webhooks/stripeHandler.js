@@ -213,7 +213,9 @@ exports.onSubscriptionChange = async (event) => {
     status: sub.status,
     plan: user.subscriptionPlan,
     cancelAtPeriodEnd: String(!!sub.cancel_at_period_end),
-    currentPeriodEnd: user.subscription.currentPeriodEnd?.toISOString?.(),
+    currentPeriodEnd: sub.current_period_end
+      ? new Date(sub.current_period_end * 1000).toISOString()
+      : null,
     mode: event.livemode ? "LIVE" : "TEST",
   });
 };
