@@ -24,7 +24,9 @@ async function main() {
   const limit = Number(process.env.LIMIT || 0); // 0 = unlimited
   const batchSize = Number(process.env.BATCH_SIZE || 200);
 
-  await mongoose.connect(uri);
+  await mongoose.connect(uri, {
+    dbName: process.env.MONGODB_DB_NAME, // <-- ensure you're connecting to the right DB
+  });
   console.log("Mongoose connected:", {
     host: mongoose.connection.host,
     name: mongoose.connection.name, // <-- THIS is the DB name you're counting in
