@@ -27,7 +27,29 @@ async function main() {
   await mongoose.connect(uri);
   console.log("Connected to MongoDB.");
 
-  const cursor = User.find({ personalBusinessId: null })
+  const needsBackfillQuery = {
+    $or: [
+      { personalBusinessId: null },
+      { personalBusinessId: { $exists: false } },
+    ],
+  };
+
+  // Debug counts (fast, safe)
+  const totalUsers = await User.countDocuments({});
+  const nullCount = await User.countDocuments({ personalBusinessId: null });
+  const missingCount = await User.countDocuments({
+    personalBusinessId: { $exists: false },
+  });
+  const needsBackfillCount = await User.countDocuments(needsBackfillQuery);
+
+  console.log("User counts:", {
+    totalUsers,
+    nullCount,
+    missingCount,
+    needsBackfillCount,
+  });
+
+  const cursor = User.find(needsBackfillQuery)
     .select("_id email fullName companyName personalBusinessId")
     .cursor();
 
