@@ -25,7 +25,27 @@ async function main() {
   const batchSize = Number(process.env.BATCH_SIZE || 200);
 
   await mongoose.connect(uri);
-  console.log("Connected to MongoDB.");
+  console.log("Mongoose connected:", {
+    host: mongoose.connection.host,
+    name: mongoose.connection.name, // <-- THIS is the DB name you're counting in
+    readyState: mongoose.connection.readyState,
+  });
+
+  // User collection name (what Mongo collection you're actually querying)
+  console.log("User model collection:", {
+    modelName: User.modelName,
+    collectionName: User.collection.name,
+  });
+
+  // Count using both methods (sometimes helps spot weirdness)
+  const totalUsers_countDocuments = await User.countDocuments({});
+  const totalUsers_estimated = await User.estimatedDocumentCount();
+
+  console.log("User totals:", {
+    totalUsers_countDocuments,
+    totalUsers_estimated,
+  });
+  // END
 
   const needsBackfillQuery = {
     $or: [
