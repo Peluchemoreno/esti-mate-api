@@ -50,6 +50,7 @@ async function main() {
   });
 
   const cursor = User.find();
+  console.log(cursor);
 
   // const cursor = User.find(needsBackfillQuery);
   // .select("_id email fullName companyName personalBusinessId")
