@@ -13,6 +13,11 @@ const Processed = mongoose.model(
   ),
 );
 
+const { FF_SUBSCRIPTION_BY_BUSINESS } = require("../utils/featureFlags");
+const {
+  upsertBusinessSubscription,
+} = require("../services/businessSubscriptionAdapter");
+
 const PRICE_TO_PLAN = {
   // TODO: fill with your TEST price ids → plans
   // NOTE: the price below is the live product
@@ -133,6 +138,16 @@ exports.onCheckoutCompleted = async (event) => {
 
   await user.save();
 
+  if (FF_SUBSCRIPTION_BY_BUSINESS && user.personalBusinessId) {
+    await upsertBusinessSubscription({
+      businessId: user.personalBusinessId,
+      stripeCustomerId: user.stripeCustomerId,
+      stripeSubscriptionId: user.stripeSubscriptionId,
+      plan: user.subscriptionPlan,
+      status: user.subscriptionStatus,
+    });
+  }
+
   await notifyDiscord("✅ Stripe: checkout.session.completed", {
     eventId: event.id,
     email: user.email,
@@ -172,6 +187,24 @@ exports.onSubscriptionChange = async (event) => {
 
   await user.save();
 
+  if (FF_SUBSCRIPTION_BY_BUSINESS && user.personalBusinessId) {
+    const item = sub.items?.data?.[0];
+    const price = item?.price;
+
+    await upsertBusinessSubscription({
+      businessId: user.personalBusinessId,
+      stripeCustomerId: sub.customer,
+      stripeSubscriptionId: sub.id,
+      plan: user.subscriptionPlan,
+      status: normalize(sub.status),
+      priceId: price?.id,
+      cancelAtPeriodEnd: sub.cancel_at_period_end,
+      currentPeriodStart: new Date(sub.current_period_start * 1000),
+      currentPeriodEnd: new Date(sub.current_period_end * 1000),
+      trialEnd: sub.trial_end ? new Date(sub.trial_end * 1000) : null,
+    });
+  }
+
   await notifyDiscord(`🔁 Stripe: ${event.type}`, {
     eventId: event.id,
     email: user.email,
@@ -196,6 +229,18 @@ exports.onInvoicePaid = async (event) => {
     await user.save();
   }
 
+  // BEGIN CHANGE
+  if (FF_SUBSCRIPTION_BY_BUSINESS && user.personalBusinessId) {
+    await upsertBusinessSubscription({
+      businessId: user.personalBusinessId,
+      stripeCustomerId: user.stripeCustomerId,
+      stripeSubscriptionId: user.stripeSubscriptionId,
+      plan: user.subscriptionPlan,
+      status: user.subscriptionStatus,
+    });
+  }
+  // END CHANGE
+
   await notifyDiscord("💰 Stripe: invoice.paid", {
     eventId: event.id,
     email: user.email,
@@ -215,6 +260,16 @@ exports.onPaymentFailed = async (event) => {
 
   user.subscriptionStatus = "past_due";
   await user.save();
+
+  if (FF_SUBSCRIPTION_BY_BUSINESS && user.personalBusinessId) {
+    await upsertBusinessSubscription({
+      businessId: user.personalBusinessId,
+      stripeCustomerId: user.stripeCustomerId,
+      stripeSubscriptionId: user.stripeSubscriptionId,
+      plan: user.subscriptionPlan,
+      status: "past_due",
+    });
+  }
 
   await notifyDiscord("⚠️ Stripe: invoice.payment_failed", {
     eventId: event.id,
