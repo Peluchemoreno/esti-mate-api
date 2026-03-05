@@ -1,4 +1,4 @@
-const BusinessSubscription = require("../models/BusinessSubscription");
+const BusinessSubscription = require("../models/businessSubscription");
 
 async function upsertBusinessSubscription({
   businessId,
