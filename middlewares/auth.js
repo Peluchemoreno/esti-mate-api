@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/user");
+const resolveTenant = require("./resloveTenant");
 
 if (!process.env.JWT_SECRET || typeof process.env.JWT_SECRET !== "string") {
   throw new Error("JWT_SECRET missing/invalid");
@@ -21,6 +22,8 @@ async function authorize(req, res, next) {
     const user = await User.findById(payload._id);
     if (!user) return res.status(401).json({ message: "Invalid token" });
     req.user = user;
+    // attach tenant + subscription
+    await resolveTenant(req, res, () => {});
     return next();
   } catch (err) {
     return res.status(401).json({ message: "Authorization required" });
