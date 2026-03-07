@@ -11,7 +11,18 @@ const toNumber = (val) => {
 
 const UserGutterProductSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      index: true,
+    },
+
+    businessId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Business",
+      index: true,
+      default: null,
+    },
     templateId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "GutterProductTemplate",
@@ -50,16 +61,19 @@ const UserGutterProductSchema = new mongoose.Schema(
 
     hasElbows: Boolean,
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // ✅ Strong uniqueness ONLY when templateId is a real ObjectId
 UserGutterProductSchema.index(
-  { userId: 1, templateId: 1 },
+  { businessId: 1, templateId: 1 },
   {
     unique: true,
-    partialFilterExpression: { templateId: { $type: "objectId" } },
-  }
+    partialFilterExpression: {
+      businessId: { $type: "objectId" },
+      templateId: { $type: "objectId" },
+    },
+  },
 );
 
 // ===== Canonicalization helpers =====
@@ -85,19 +99,19 @@ function _parseMaterial(text) {
 function _parseRectSize(text) {
   const n = _norm(text);
   const m = n.match(
-    /(\d+)\s*(?:in\.?|inch(?:es)?)?\s*[x×]\s*(\d+)\s*(?:in\.?|inch(?:es)?)?/
+    /(\d+)\s*(?:in\.?|inch(?:es)?)?\s*[x×]\s*(\d+)\s*(?:in\.?|inch(?:es)?)?/,
   );
   return m ? `${m[1]}x${m[2]}` : null;
 }
 function _parseRoundDia(text) {
   const m = _norm(text).match(
-    /(?:^|\b)(\d+(?:\.\d+)?)\s*(?:["]|in\.?|inch(?:es)?)\b/
+    /(?:^|\b)(\d+(?:\.\d+)?)\s*(?:["]|in\.?|inch(?:es)?)\b/,
   );
   return m ? m[1] : null;
 }
 function _parseOffsetInches(text) {
   const m = _norm(text).match(
-    /(?:^|\b)(\d+(?:\.\d+)?)\s*(?:["]|in\.?|inch(?:es)?)\b/
+    /(?:^|\b)(\d+(?:\.\d+)?)\s*(?:["]|in\.?|inch(?:es)?)\b/,
   );
   return m ? m[1] : null;
 }
@@ -116,7 +130,7 @@ function _canonicalName(kind, sizeLabel, detail, material) {
 }
 function _canonicalSlug(kind, sizeSlug, detail, material) {
   return `downspout|${kind}|${sizeSlug}|${String(
-    detail
+    detail,
   ).toLowerCase()}|${material}`
     .toLowerCase()
     .replace(/\s+/g, "-");
@@ -204,14 +218,15 @@ UserGutterProductSchema.pre("findOneAndUpdate", function (next) {
 
 // ✅ Strong uniqueness by slug ONLY when slug is a non-empty string.
 UserGutterProductSchema.index(
-  { userId: 1, slug: 1 },
+  { businessId: 1, slug: 1 },
   {
     unique: true,
-    name: "userId_1_slug_1_unique_nonnull",
+    name: "businessId_1_slug_1_unique_nonnull",
     partialFilterExpression: {
+      businessId: { $type: "objectId" },
       slug: { $exists: true, $type: "string", $ne: "" },
     },
-  }
+  },
 );
 
 module.exports = mongoose.model("UserGutterProduct", UserGutterProductSchema);

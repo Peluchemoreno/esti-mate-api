@@ -1,24 +1,35 @@
-// controllers/products.js
 const mongoose = require("mongoose");
 const UserGutterProduct = require("../models/userGutterProduct");
 const { ensureUserCatalog } = require("../services/productCopyService");
+
+function getOwnershipFilter(req) {
+  const userId = req.user?._id;
+  const businessId = req.businessId || req.user?.personalBusinessId || null;
+
+  if (businessId) {
+    return {
+      $or: [{ businessId }, { userId }],
+    };
+  }
+
+  return { userId };
+}
+
+function getBusinessId(req) {
+  return req.businessId || req.user?.personalBusinessId || null;
+}
 
 // CREATE
 async function createProduct(req, res, next) {
   try {
     const userId = req.user?._id;
-    if (!userId)
-      return res.status(401).json({ message: "Authorization required" });
+    const businessId = getBusinessId(req);
 
-    const {
-      name,
-      price,
-      description,
-      colorCode,
-      unit,
-      listed,
-      // keep any other fields you allow...
-    } = req.body;
+    if (!userId) {
+      return res.status(401).json({ message: "Authorization required" });
+    }
+
+    const { name, price, description, colorCode, unit, listed } = req.body;
 
     const chosen =
       typeof colorCode === "string" && colorCode.trim()
@@ -26,46 +37,50 @@ async function createProduct(req, res, next) {
         : "#000000";
 
     const doc = await UserGutterProduct.create({
-      userId, // owner
+      userId,
+      businessId,
       name,
-      price, // setter will coerce "$8.00" -> 8
+      price,
       description: description ?? "",
-      // ✅ canonical
       visual: chosen,
-      // ✅ keep for backward compatibility (if schema supports it)
       colorCode: chosen,
-      // ⚠️ do NOT touch `color` here (legacy + inherit semantics)
       unit: unit ?? "unit",
       listed: !!listed,
     });
+
     return res.json({ data: doc });
   } catch (err) {
     next(err);
   }
 }
 
-// controllers/products.js
+// GET ALL
 async function getAllProducts(req, res) {
   try {
     const userId = req.user?._id;
-    if (!userId)
+    const businessId = getBusinessId(req);
+
+    if (!userId) {
       return res.status(401).json({ message: "Authorization required" });
+    }
 
     const scope = String(req.query.scope || "").toLowerCase();
-
-    // Default = listed-only. "pricing" or "all" = full catalog.
     const showAll = scope === "pricing" || scope === "all";
 
-    const filter = { userId };
+    let filter = getOwnershipFilter(req);
 
     if (!scope || scope === "ui") {
-      // UI list only: seeded + listed
-      filter.templateId = { $ne: null };
-      filter.listed = true;
+      filter = {
+        $and: [
+          getOwnershipFilter(req),
+          {
+            templateId: { $ne: null },
+            listed: true,
+          },
+        ],
+      };
     } else if (scope === "pricing" || scope === "all") {
-      // Full catalog for calculator/diagram; no listed filter
-      // (Keep userId filter so you only see this user's copies)
-      // Optional: if you want *everything* including custom unseeded items, leave as-is
+      // keep full ownership filter only
     } else {
       return res.status(400).json({ error: "Invalid scope" });
     }
@@ -74,24 +89,37 @@ async function getAllProducts(req, res) {
       .sort({ name: 1 })
       .lean();
 
-    // 👇 bootstrap fallback for fresh accounts
     if ((!scope || scope === "ui") && products.length === 0) {
-      const existingCount = await UserGutterProduct.countDocuments({ userId });
+      const existingCount = await UserGutterProduct.countDocuments(
+        getOwnershipFilter(req),
+      );
+
       if (existingCount === 0) {
         await ensureUserCatalog(userId);
+
+        if (businessId) {
+          await UserGutterProduct.updateMany(
+            {
+              userId,
+              $or: [{ businessId: { $exists: false } }, { businessId: null }],
+            },
+            { $set: { businessId } },
+          );
+        }
+
         products = await UserGutterProduct.find(filter)
           .sort({ name: 1 })
           .lean();
       }
     }
 
-    // Helpful log (keep during rollout)
     console.log(
-      "[getAllProducts] uid=%s scope=%s filter=%o count=%d",
+      "[getAllProducts] uid=%s biz=%s scope=%s filter=%o count=%d",
       String(userId),
+      businessId ? String(businessId) : "none",
       scope || "default",
       filter,
-      products.length
+      products.length,
     );
 
     return res.status(200).send(products);
@@ -101,24 +129,28 @@ async function getAllProducts(req, res) {
   }
 }
 
-// UPDATE (robust; supports legacy userId, consistent field names)
+// UPDATE
 async function updateProduct(req, res, next) {
   try {
     const userId = req.user?._id;
+    const businessId = getBusinessId(req);
     const { productId } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Authorization required" });
+    }
 
     if (!mongoose.isValidObjectId(productId)) {
       return res.status(400).json({ error: "Invalid product id" });
     }
 
-    // Only allow these fields from the client
     const allowed = [
       "name",
       "description",
       "price",
       "unit",
       "color",
-      "colorCode", // accept either color or colorCode
+      "colorCode",
       "profile",
       "size",
       "type",
@@ -135,10 +167,6 @@ async function updateProduct(req, res, next) {
       }
     }
 
-    // ✅ Canonical color write:
-    // - visual is the source of truth
-    // - accept colorCode as legacy input
-    // - DO NOT write into `color` automatically (color=null means inherit)
     const incomingVisual =
       typeof update.visual === "string" && update.visual.trim()
         ? update.visual.trim()
@@ -148,24 +176,30 @@ async function updateProduct(req, res, next) {
 
     if (incomingVisual) {
       update.visual = incomingVisual;
-      // keep for backward compatibility (if schema supports it)
       update.colorCode = incomingVisual;
     }
 
-    // IMPORTANT: keep `color` exactly as the client sent it (including null),
-    // and do NOT set it from visual/colorCode.
-    // Strip empty strings to avoid wiping fields accidentally
     Object.keys(update).forEach((k) => {
       if (update[k] === "") delete update[k];
     });
 
+    const ownershipFilter = businessId
+      ? {
+          _id: productId,
+          $or: [{ businessId }, { userId }],
+        }
+      : {
+          _id: productId,
+          userId,
+        };
+
     const updated = await UserGutterProduct.findOneAndUpdate(
-      { _id: productId, userId: userId },
+      ownershipFilter,
       { $set: update },
       {
         new: true,
         runValidators: true,
-      }
+      },
     ).lean();
 
     if (!updated) {
@@ -193,19 +227,32 @@ async function updateProduct(req, res, next) {
 async function deleteProduct(req, res, next) {
   try {
     const userId = req.user?._id;
-    if (!userId)
+    const businessId = getBusinessId(req);
+
+    if (!userId) {
       return res.status(401).json({ message: "Authorization required" });
+    }
 
     const { productId } = req.params;
     if (!mongoose.isValidObjectId(productId)) {
       return res.status(400).json({ message: "Invalid id" });
     }
 
-    const doc = await UserGutterProduct.findOneAndDelete({
-      _id: productId,
-      userId,
-    });
-    if (!doc) return res.status(404).json({ message: "Not found" });
+    const ownershipFilter = businessId
+      ? {
+          _id: productId,
+          $or: [{ businessId }, { userId }],
+        }
+      : {
+          _id: productId,
+          userId,
+        };
+
+    const doc = await UserGutterProduct.findOneAndDelete(ownershipFilter);
+
+    if (!doc) {
+      return res.status(404).json({ message: "Not found" });
+    }
 
     return res.json({ message: `deleted product with ID: ${doc._id}` });
   } catch (err) {
