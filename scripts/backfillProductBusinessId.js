@@ -1,6 +1,6 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
-const Product = require("../models/product");
+const UserGutterProduct = require("../models/UserGutterProduct");
 const User = require("../models/user");
 
 async function run() {
@@ -11,7 +11,7 @@ async function run() {
   console.log("Connected:", {
     host: mongoose.connection.host,
     dbName: mongoose.connection.name,
-    productCollection: Product.collection.name,
+    productCollection: UserGutterProduct.collection.name,
     userCollection: User.collection.name,
   });
 
@@ -19,21 +19,25 @@ async function run() {
     $or: [{ businessId: { $exists: false } }, { businessId: null }],
   };
 
-  const totalProducts = await Product.countDocuments({});
-  const missingCount = await Product.countDocuments({
+  const totalUserGutterProducts = await UserGutterProduct.countDocuments({});
+  const missingCount = await UserGutterProduct.countDocuments({
     businessId: { $exists: false },
   });
-  const nullCount = await Product.countDocuments({ businessId: null });
-  const needsBackfillCount = await Product.countDocuments(needsBackfillQuery);
+  const nullCount = await UserGutterProduct.countDocuments({
+    businessId: null,
+  });
+  const needsBackfillCount = await UserGutterProduct.countDocuments(
+    needsBackfillQuery,
+  );
 
-  console.log("Product counts:", {
-    totalProducts,
+  console.log("UserGutterProduct counts:", {
+    totalUserGutterProducts,
     missingCount,
     nullCount,
     needsBackfillCount,
   });
 
-  const products = await Product.find(needsBackfillQuery).select(
+  const products = await UserGutterProduct.find(needsBackfillQuery).select(
     "_id userId businessId name",
   );
 
@@ -72,6 +76,6 @@ async function run() {
 }
 
 run().catch((err) => {
-  console.error("backfillProductBusinessId failed:", err);
+  console.error("backfillUserGutterProductBusinessId failed:", err);
   process.exit(1);
 });
