@@ -13,6 +13,12 @@ const estimateItemSchema = new mongoose.Schema(
 const estimateSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true },
+    businessId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Business",
+      index: true,
+      default: null,
+    },
     projectId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Project",

@@ -14,6 +14,19 @@ try {
   Customer = null;
 }
 
+function estimateOwnershipFilter(req) {
+  const userId = req.user._id?.toString();
+  const businessId = req.businessId || req.user?.personalBusinessId || null;
+
+  if (businessId) {
+    return {
+      $or: [{ businessId }, { userId }],
+    };
+  }
+
+  return { userId };
+}
+
 // GET /api/estimates/next  -> next estimate number for this user
 exports.getNext = async (req, res, next) => {
   try {
@@ -45,16 +58,16 @@ exports.list = async (req, res, next) => {
   try {
     const userId = req.user._id?.toString();
     const { projectId } = req.query;
-    // Only apply a limit if the client provided a valid number
     const raw = Number(req.query.limit);
     const limit = Number.isFinite(raw)
       ? Math.max(1, Math.min(100, Math.trunc(raw)))
       : undefined;
     const cursor = req.query.cursor ? new Date(req.query.cursor) : null;
-    const filter = { userId };
+
+    const filter = estimateOwnershipFilter(req);
+
     if (projectId) filter.projectId = projectId;
     if (cursor && !isNaN(cursor.getTime())) {
-      // paginate by createdAt (desc)
       filter.createdAt = { $lt: cursor };
     }
 
@@ -64,13 +77,16 @@ exports.list = async (req, res, next) => {
         "_id estimateNumber estimateDate total projectSnapshot updatedAt createdAt",
       )
       .lean();
+
     if (limit) q.limit(limit);
+
     const estimates = await q.exec();
 
     const nextCursor =
       estimates.length && limit
         ? estimates[estimates.length - 1].createdAt
         : null;
+
     res.json({ estimates, nextCursor });
   } catch (e) {
     next(e);
@@ -80,16 +96,22 @@ exports.list = async (req, res, next) => {
 // GET /api/estimates/:id
 exports.getOne = async (req, res, next) => {
   try {
-    const userId = req.user._id?.toString();
     const { id } = req.params;
-    const est = await Estimate.findById(id).lean();
+    const ownershipFilter = estimateOwnershipFilter(req);
+
+    const est = await Estimate.findOne({
+      _id: id,
+      ...ownershipFilter,
+    }).lean();
+
+    if (!est) {
+      return res.status(404).json({ error: "Estimate not found" });
+    }
+
     if (est?.diagram && !Array.isArray(est.diagram.includedPhotoIds)) {
       est.diagram.includedPhotoIds = [];
     }
 
-    if (!est || est.userId?.toString() !== userId) {
-      return res.status(404).json({ error: "Estimate not found" });
-    }
     res.json({ estimate: est });
   } catch (e) {
     next(e);
@@ -100,6 +122,7 @@ exports.getOne = async (req, res, next) => {
 exports.create = async (req, res, next) => {
   try {
     const userId = req.user._id?.toString();
+    const businessId = req.businessId || req.user?.personalBusinessId || null;
     const { projectId, diagram, items, estimateDate, notes } = req.body;
 
     console.warn(
@@ -113,15 +136,19 @@ exports.create = async (req, res, next) => {
       return res.status(400).json({ error: "Missing projectId or diagram" });
     }
 
-    // ------------------------------
-    // Version B: server-truth snapshots
-    // ------------------------------
-    const project = await Project.findOne({ _id: projectId, userId }).lean();
+    const projectOwnershipFilter = businessId
+      ? { $or: [{ businessId }, { userId }] }
+      : { userId };
+
+    const project = await Project.findOne({
+      _id: projectId,
+      ...projectOwnershipFilter,
+    }).lean();
+
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    // Legacy snapshot kept for existing UI flows
     const legacyProjectSnapshot = {
       name: project.projectName || "",
       address: project.siteAddress || "",
@@ -139,9 +166,13 @@ exports.create = async (req, res, next) => {
 
     let customerSnapshot = null;
     if (Customer && project.customerId) {
+      const customerOwnershipFilter = businessId
+        ? { $or: [{ businessId }, { userId }] }
+        : { userId };
+
       const customer = await Customer.findOne({
         _id: project.customerId,
-        userId,
+        ...customerOwnershipFilter,
       }).lean();
 
       if (customer) {
@@ -163,7 +194,6 @@ exports.create = async (req, res, next) => {
       }
     }
 
-    // server is the source of truth
     const nextNum = await nextEstNo(userId);
 
     const total = (Array.isArray(items) ? items : []).reduce(
@@ -173,12 +203,10 @@ exports.create = async (req, res, next) => {
 
     const doc = await Estimate.create({
       userId,
+      businessId,
       projectId,
 
-      // ✅ keep legacy snapshot populated for old UI
       projectSnapshot: legacyProjectSnapshot,
-
-      // ✅ Version B snapshots (additive)
       customerSnapshot,
       siteSnapshot,
 
@@ -210,17 +238,18 @@ exports.create = async (req, res, next) => {
 // DELETE /api/estimates/:id
 exports.remove = async (req, res, next) => {
   try {
-    const userId = req.user._id?.toString();
     const { id } = req.params;
+    const ownershipFilter = estimateOwnershipFilter(req);
 
     const deleted = await Estimate.findOneAndDelete({
       _id: id,
-      userId,
+      ...ownershipFilter,
     });
 
     if (!deleted) {
       return res.status(404).json({ error: "Estimate not found" });
     }
+
     res.json({ ok: true });
   } catch (e) {
     next(e);
