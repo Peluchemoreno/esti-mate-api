@@ -45,17 +45,22 @@ function createProject(req, res, next) {
     siteEmail,
   }))(req.body);
 
-  Project.create({ ...fields, userId })
+  const businessId = req.businessId || req.user?.personalBusinessId;
+
+  Project.create({ ...fields, userId, businessId })
     .then((data) => res.json({ data }))
     .catch(next);
 }
 
 function getAllProjects(req, res, next) {
   const userId = req.user?._id;
+  const businessId = req.businessId || req.user?.personalBusinessId;
   if (!userId)
     return res.status(401).json({ message: "Authorization required" });
 
-  Project.find({ userId: userId })
+  Project.find({
+    $or: [{ businessId: businessId }, { userId: userId }],
+  })
     .lean()
     .then((projects) => res.json({ projects })) // [] ok
     .catch(next);
@@ -63,13 +68,18 @@ function getAllProjects(req, res, next) {
 
 function deleteProject(req, res, next) {
   const userId = req.user?._id;
+  const businessId = req.businessId || req.user?.personalBusinessId;
+
   const { projectId } = req.params;
   if (!userId)
     return res.status(401).json({ message: "Authorization required" });
   if (!mongoose.isValidObjectId(projectId))
     return res.status(400).json({ message: "Invalid id" });
 
-  Project.findOneAndDelete({ _id: projectId, userId: userId })
+  Project.findOneAndDelete({
+    _id: projectId,
+    $or: [{ businessId: businessId }, { userId: userId }],
+  })
     .then((doc) => {
       if (!doc) return res.status(404).json({ message: "Not found" });
       return res.json({ message: `deleted project with ID: ${doc._id}` });
@@ -79,6 +89,8 @@ function deleteProject(req, res, next) {
 
 function addDiagramToProject(req, res, next) {
   const userId = req.user?._id;
+  const businessId = req.businessId || req.user?.personalBusinessId;
+
   const { projectId } = req.params;
   if (!userId)
     return res.status(401).json({ message: "Authorization required" });
@@ -100,7 +112,10 @@ function addDiagramToProject(req, res, next) {
     accessories,
   } = req.body;
   Project.findOneAndUpdate(
-    { _id: projectId, userId: userId },
+    {
+      _id: projectId,
+      $or: [{ businessId: businessId }, { userId: userId }],
+    },
     {
       $push: {
         diagrams: {
@@ -133,6 +148,7 @@ async function updateDiagram(req, res, next) {
   try {
     const userId = req.user?._id;
     const { projectId, diagramId } = req.params;
+    const businessId = req.businessId || req.user?.personalBusinessId;
 
     if (!userId)
       return res.status(401).json({ message: "Authorization required" });
@@ -191,7 +207,11 @@ async function updateDiagram(req, res, next) {
     // ---- END NEW ----
 
     const updated = await Project.findOneAndUpdate(
-      { _id: projectId, userId, "diagrams._id": diagramId },
+      {
+        _id: projectId,
+        "diagrams._id": diagramId,
+        $or: [{ businessId: businessId }, { userId: userId }],
+      },
       { $set: setBlock },
       { new: true },
     );
@@ -208,12 +228,17 @@ async function updateDiagram(req, res, next) {
 function getProjectDiagrams(req, res, next) {
   const userId = req.user?._id;
   const { projectId } = req.params;
+  const businessId = req.businessId || req.user?.personalBusinessId;
+
   if (!userId)
     return res.status(401).json({ message: "Authorization required" });
   if (!mongoose.isValidObjectId(projectId))
     return res.status(400).json({ message: "Invalid id" });
 
-  Project.findOne({ _id: projectId, userId: userId })
+  Project.findOne({
+    _id: projectId,
+    $or: [{ businessId: businessId }, { userId: userId }],
+  })
     .lean()
     .then((project) => {
       if (!project) return res.status(404).json({ error: "Project not found" });
@@ -225,6 +250,8 @@ function getProjectDiagrams(req, res, next) {
 function deleteDiagram(req, res, next) {
   const userId = req.user?._id;
   const { projectId, diagramId } = req.params;
+  const businessId = req.businessId || req.user?.personalBusinessId;
+
   if (!userId)
     return res.status(401).json({ message: "Authorization required" });
   if (
@@ -234,7 +261,10 @@ function deleteDiagram(req, res, next) {
     return res.status(400).json({ message: "Invalid id" });
 
   Project.findOneAndUpdate(
-    { _id: projectId, userId: userId },
+    {
+      _id: projectId,
+      $or: [{ businessId: businessId }, { userId: userId }],
+    },
     { $pull: { diagrams: { _id: diagramId } } },
     { new: true },
   )

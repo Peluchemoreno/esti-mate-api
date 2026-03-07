@@ -165,6 +165,11 @@ const projectSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     required: true,
   },
+  businessId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: false,
+    index: true,
+  },
   createdAt: {
     type: Date,
     default: Date.now(),
