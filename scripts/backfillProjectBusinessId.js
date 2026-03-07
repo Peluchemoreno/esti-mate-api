@@ -3,7 +3,7 @@ const Project = require("../models/project");
 const User = require("../models/user");
 
 async function run() {
-  await mongoose.connect(process.env.MONGO_DB);
+  await mongoose.connect(process.env.MONGODB_URI);
 
   const projects = await Project.find({ businessId: { $exists: false } });
 
