@@ -50,19 +50,27 @@ function listCustomers(req, res, next) {
     return res.status(401).json({ message: "Authorization required" });
 
   const q = String(req.query?.query || "").trim();
+  const ownershipFilter = getOwnershipFilter(req);
 
-  const filter = getOwnershipFilter(req);
+  let filter = ownershipFilter;
 
   if (q) {
     const safe = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const rx = new RegExp(safe, "i");
 
-    filter.$and = [
-      filter,
-      {
-        $or: [{ name: rx }, { companyName: rx }, { phone: rx }, { email: rx }],
-      },
-    ];
+    filter = {
+      $and: [
+        ownershipFilter,
+        {
+          $or: [
+            { name: rx },
+            { companyName: rx },
+            { phone: rx },
+            { email: rx },
+          ],
+        },
+      ],
+    };
   }
 
   Customer.find(filter)
