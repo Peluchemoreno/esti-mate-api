@@ -1,8 +1,23 @@
 const mongoose = require("mongoose");
 const Customer = require("../models/customer");
 
+function getOwnershipFilter(req) {
+  const userId = req.user?._id;
+  const businessId = req.businessId || req.user?.personalBusinessId || null;
+
+  if (businessId) {
+    return {
+      $or: [{ businessId }, { userId }],
+    };
+  }
+
+  return { userId };
+}
+
 function createCustomer(req, res, next) {
   const userId = req.user?._id;
+  const businessId = req.businessId || req.user?.personalBusinessId || null;
+
   if (!userId)
     return res.status(401).json({ message: "Authorization required" });
 
@@ -13,6 +28,7 @@ function createCustomer(req, res, next) {
 
   Customer.create({
     userId,
+    businessId,
     type: type || undefined,
     name: String(name).trim(),
     companyName: companyName ?? undefined,
@@ -34,16 +50,18 @@ function listCustomers(req, res, next) {
     return res.status(401).json({ message: "Authorization required" });
 
   const q = String(req.query?.query || "").trim();
-  const filter = { userId };
+
+  const filter = getOwnershipFilter(req);
 
   if (q) {
     const safe = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const rx = new RegExp(safe, "i");
-    filter.$or = [
-      { name: rx },
-      { companyName: rx },
-      { phone: rx },
-      { email: rx },
+
+    filter.$and = [
+      filter,
+      {
+        $or: [{ name: rx }, { companyName: rx }, { phone: rx }, { email: rx }],
+      },
     ];
   }
 
@@ -64,7 +82,12 @@ function getCustomerById(req, res, next) {
   if (!mongoose.isValidObjectId(id))
     return res.status(400).json({ message: "Invalid id" });
 
-  Customer.findOne({ _id: id, userId })
+  const filter = {
+    _id: id,
+    ...getOwnershipFilter(req),
+  };
+
+  Customer.findOne(filter)
     .lean()
     .then((customer) => {
       if (!customer) return res.status(404).json({ message: "Not found" });
@@ -94,14 +117,20 @@ function updateCustomer(req, res, next) {
   if (phone !== undefined) set.phone = phone;
   if (email !== undefined) set.email = email;
 
-  // allow updating integration fields later without breaking now
   if (req.body?.integration) {
     set["integration.provider"] = req.body.integration.provider ?? null;
     set["integration.externalId"] = req.body.integration.externalId ?? null;
     set["integration.syncedAt"] = req.body.integration.syncedAt ?? null;
   }
 
-  Customer.findOneAndUpdate({ _id: id, userId }, { $set: set }, { new: true })
+  Customer.findOneAndUpdate(
+    {
+      _id: id,
+      ...getOwnershipFilter(req),
+    },
+    { $set: set },
+    { new: true },
+  )
     .lean()
     .then((customer) => {
       if (!customer) return res.status(404).json({ message: "Not found" });

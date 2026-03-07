@@ -18,6 +18,13 @@ const customerSchema = new mongoose.Schema(
       index: true,
     },
 
+    businessId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Business",
+      index: true,
+      default: null,
+    },
+
     type: {
       type: String,
       enum: ["builder", "homeowner"],
