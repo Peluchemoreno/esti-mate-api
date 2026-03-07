@@ -1,6 +1,6 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
-const UserGutterProduct = require("../models/UserGutterProduct");
+const UserGutterProduct = require("../models/userGutterProduct");
 const User = require("../models/user");
 
 async function run() {
