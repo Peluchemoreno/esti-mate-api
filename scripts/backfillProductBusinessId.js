@@ -1,6 +1,6 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
-const UserGutterProduct = require("../models/userGutterProduct");
+const Product = require("../models/UserGutterProduct");
 const User = require("../models/user");
 
 async function run() {
@@ -11,7 +11,7 @@ async function run() {
   console.log("Connected:", {
     host: mongoose.connection.host,
     dbName: mongoose.connection.name,
-    productCollection: UserGutterProduct.collection.name,
+    productCollection: Product.collection.name,
     userCollection: User.collection.name,
   });
 
@@ -19,31 +19,28 @@ async function run() {
     $or: [{ businessId: { $exists: false } }, { businessId: null }],
   };
 
-  const totalUserGutterProducts = await UserGutterProduct.countDocuments({});
-  const missingCount = await UserGutterProduct.countDocuments({
+  const totalProducts = await Product.countDocuments({});
+  const missingCount = await Product.countDocuments({
     businessId: { $exists: false },
   });
-  const nullCount = await UserGutterProduct.countDocuments({
-    businessId: null,
-  });
-  const needsBackfillCount = await UserGutterProduct.countDocuments(
-    needsBackfillQuery,
-  );
+  const nullCount = await Product.countDocuments({ businessId: null });
+  const needsBackfillCount = await Product.countDocuments(needsBackfillQuery);
 
   console.log("UserGutterProduct counts:", {
-    totalUserGutterProducts,
+    totalUserGutterProducts: totalProducts,
     missingCount,
     nullCount,
     needsBackfillCount,
   });
 
-  const products = await UserGutterProduct.find(needsBackfillQuery).select(
-    "_id userId businessId name",
+  const products = await Product.find(needsBackfillQuery).select(
+    "_id userId businessId name slug",
   );
 
   let updated = 0;
   let skippedNoUser = 0;
   let skippedNoBusiness = 0;
+  let updateErrors = 0;
 
   for (const product of products) {
     const user = await User.findById(product.userId).select(
@@ -60,9 +57,21 @@ async function run() {
       continue;
     }
 
-    product.businessId = user.personalBusinessId;
-    await product.save();
-    updated += 1;
+    try {
+      await Product.updateOne(
+        { _id: product._id },
+        { $set: { businessId: user.personalBusinessId } },
+      );
+      updated += 1;
+    } catch (err) {
+      updateErrors += 1;
+      console.error("Failed product update:", {
+        productId: String(product._id),
+        userId: String(product.userId),
+        slug: product.slug || null,
+        message: err.message,
+      });
+    }
   }
 
   console.log("Done:", {
@@ -70,12 +79,13 @@ async function run() {
     updated,
     skippedNoUser,
     skippedNoBusiness,
+    updateErrors,
   });
 
   process.exit(0);
 }
 
 run().catch((err) => {
-  console.error("backfillUserGutterProductBusinessId failed:", err);
+  console.error("backfillProductBusinessId failed:", err);
   process.exit(1);
 });
