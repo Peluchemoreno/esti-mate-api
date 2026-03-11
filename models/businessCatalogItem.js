@@ -18,6 +18,8 @@ const BUSINESS_CATALOG_TOOL_FAMILIES = [
   "text",
 ];
 
+const BEHAVIOR_ESTIMATION_MODES = ["measured", "manual", "text"];
+
 const drawingDefaultsSchema = new Schema(
   {
     color: { type: String, default: "#000000" },
@@ -47,6 +49,37 @@ const sourceSchema = new Schema(
     legacyId: { type: Schema.Types.ObjectId, default: null },
     migratedAt: { type: Date, default: null },
     migrationVersion: { type: Number, default: 1 },
+  },
+  { _id: false },
+);
+
+const uiSchema = new Schema(
+  {
+    group: { type: String, default: "General", trim: true, index: true },
+    order: { type: Number, default: 100 },
+    iconKey: { type: String, default: null, trim: true },
+    badge: { type: String, default: null, trim: true },
+    visibleInQuickAdd: { type: Boolean, default: true, index: true },
+    visibleInPricing: { type: Boolean, default: true, index: true },
+    visibleInDiagram: { type: Boolean, default: true, index: true },
+  },
+  { _id: false },
+);
+
+const behaviorSchema = new Schema(
+  {
+    estimationMode: {
+      type: String,
+      enum: BEHAVIOR_ESTIMATION_MODES,
+      default: "measured",
+    },
+    supportsDiagramPlacement: { type: Boolean, default: true },
+    supportsFreeformPlacement: { type: Boolean, default: false },
+    recommendedTool: {
+      type: String,
+      enum: BUSINESS_CATALOG_TOOL_FAMILIES,
+      default: "point",
+    },
   },
   { _id: false },
 );
@@ -119,6 +152,16 @@ const businessCatalogItemSchema = new Schema(
 
     drawingDefaults: {
       type: drawingDefaultsSchema,
+      default: () => ({}),
+    },
+
+    ui: {
+      type: uiSchema,
+      default: () => ({}),
+    },
+
+    behavior: {
+      type: behaviorSchema,
       default: () => ({}),
     },
 
