@@ -11,6 +11,7 @@ const billingRouter = require("./billing");
 const requireTier = require("../middlewares/requireTier");
 const customersRouter = require("./customers");
 const adminRouter = require("./admin");
+const catalogRouter = require("./catalog");
 
 router.use("/admin", authorize, adminRouter);
 router.use("/api/estimates", estimatesRouter);
@@ -31,6 +32,14 @@ router.use(
   authorize,
   requireTier(["basic"]),
   customersRouter,
+);
+
+//new
+router.use(
+  "/dashboard/catalog",
+  authorize,
+  requireTier(["basic"]),
+  catalogRouter,
 );
 
 // Optional alias to match requested paths (also protected)
