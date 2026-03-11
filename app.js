@@ -221,7 +221,7 @@ app.use((req, res, next) => {
 
 app.post(
   "/webhooks/stripe",
-  bodyParser.raw({ type: "application/json" }),
+  bodyParser.raw({ type: "*/*" }),
   async (req, res) => {
     console.log("running endpoint /webhooks/stripe");
 
@@ -234,6 +234,16 @@ app.post(
       !!req.headers["stripe-signature"],
       "len=",
       req.body?.length,
+    );
+
+    console.log(
+      "[stripe debug]",
+      "isBuffer=",
+      Buffer.isBuffer(req.body),
+      "type=",
+      typeof req.body,
+      "content-type=",
+      req.headers["content-type"],
     );
 
     // 1) Verify signature (and report verification failures too)
