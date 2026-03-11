@@ -66,7 +66,6 @@ async function getAllProducts(req, res) {
     }
 
     const scope = String(req.query.scope || "").toLowerCase();
-    const showAll = scope === "pricing" || scope === "all";
 
     let filter = getOwnershipFilter(req);
 
@@ -86,7 +85,11 @@ async function getAllProducts(req, res) {
       return res.status(400).json({ error: "Invalid scope" });
     }
 
-    let products = await catalogReadService.getUnifiedCatalog(filter);
+    let products = await catalogReadService.getUnifiedCatalog({
+      filter,
+      businessId,
+      scope,
+    });
 
     if ((!scope || scope === "ui") && products.length === 0) {
       const existingCount = await UserGutterProduct.countDocuments(
@@ -106,7 +109,11 @@ async function getAllProducts(req, res) {
           );
         }
 
-        products = await catalogReadService.getUnifiedCatalog(filter);
+        products = await catalogReadService.getUnifiedCatalog({
+          filter,
+          businessId,
+          scope,
+        });
       }
     }
 
