@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const UserGutterProduct = require("../models/userGutterProduct");
 const { ensureUserCatalog } = require("../services/productCopyService");
+const catalogReadService = require("../services/catalogReadService");
 
 function getOwnershipFilter(req) {
   const userId = req.user?._id;
@@ -85,9 +86,7 @@ async function getAllProducts(req, res) {
       return res.status(400).json({ error: "Invalid scope" });
     }
 
-    let products = await UserGutterProduct.find(filter)
-      .sort({ name: 1 })
-      .lean();
+    let products = await catalogReadService.getUnifiedCatalog(filter);
 
     if ((!scope || scope === "ui") && products.length === 0) {
       const existingCount = await UserGutterProduct.countDocuments(
@@ -107,9 +106,7 @@ async function getAllProducts(req, res) {
           );
         }
 
-        products = await UserGutterProduct.find(filter)
-          .sort({ name: 1 })
-          .lean();
+        products = await catalogReadService.getUnifiedCatalog(filter);
       }
     }
 
