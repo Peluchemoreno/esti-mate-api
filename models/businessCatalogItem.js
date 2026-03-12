@@ -45,10 +45,10 @@ const pricingSchema = new Schema(
 
 const sourceSchema = new Schema(
   {
-    collection: { type: String, default: null },
-    legacyId: { type: Schema.Types.ObjectId, default: null },
-    migratedAt: { type: Date, default: null },
-    migrationVersion: { type: Number, default: 1 },
+    collection: { type: String, default: undefined },
+    legacyId: { type: Schema.Types.ObjectId, default: undefined },
+    migratedAt: { type: Date, default: undefined },
+    migrationVersion: { type: Number, default: undefined },
   },
   { _id: false },
 );
@@ -172,7 +172,7 @@ const businessCatalogItemSchema = new Schema(
 
     source: {
       type: sourceSchema,
-      default: () => ({}),
+      default: undefined,
     },
 
     metadata: {
@@ -183,6 +183,7 @@ const businessCatalogItemSchema = new Schema(
   {
     timestamps: true,
     collection: "businesscatalogitems",
+    minimize: true,
   },
 );
 

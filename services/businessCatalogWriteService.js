@@ -42,6 +42,7 @@ async function createCatalogItem({ businessId, payload }) {
     name: payload.name,
     slug,
     description: payload.description || "",
+    isActive: payload.isActive ?? true,
     measurementFamily: payload.measurementFamily,
     drawingToolFamily: payload.drawingToolFamily,
     category: payload.category || "",
@@ -82,6 +83,8 @@ async function createCatalogItem({ businessId, payload }) {
         payload?.behavior?.supportsFreeformPlacement ?? false,
       recommendedTool: inferRecommendedTool(payload),
     },
+
+    metadata: payload?.metadata ?? {},
   });
 
   return doc.toObject();
@@ -165,6 +168,10 @@ async function updateCatalogItem({ businessId, id, payload }) {
         update[`behavior.${key}`] = payload.behavior[key];
       }
     }
+  }
+
+  if (payload.metadata !== undefined) {
+    update.metadata = payload.metadata;
   }
 
   const updated = await BusinessCatalogItem.findOneAndUpdate(
