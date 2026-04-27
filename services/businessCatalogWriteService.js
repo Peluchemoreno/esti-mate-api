@@ -74,6 +74,14 @@ async function createCatalogItem({ businessId, payload }) {
       visibleInPricing: payload?.ui?.visibleInPricing ?? true,
       visibleInDiagram: payload?.ui?.visibleInDiagram ?? true,
     },
+    uiBehavior: payload?.uiBehavior ?? "hidden",
+    toolGroup: payload?.toolGroup ?? "general",
+
+    assembly: {
+      enabled: payload?.assembly?.enabled ?? false,
+      type: payload?.assembly?.type ?? "none",
+      config: payload?.assembly?.config ?? {},
+    },
 
     behavior: {
       estimationMode: inferEstimationMode(payload),
@@ -115,6 +123,20 @@ async function updateCatalogItem({ businessId, id, payload }) {
     }
     if (payload.pricing.currency !== undefined) {
       update["pricing.currency"] = payload.pricing.currency;
+    }
+  }
+  if (payload.uiBehavior !== undefined) update.uiBehavior = payload.uiBehavior;
+  if (payload.toolGroup !== undefined) update.toolGroup = payload.toolGroup;
+
+  if (payload.assembly) {
+    if (payload.assembly.enabled !== undefined) {
+      update["assembly.enabled"] = payload.assembly.enabled;
+    }
+    if (payload.assembly.type !== undefined) {
+      update["assembly.type"] = payload.assembly.type;
+    }
+    if (payload.assembly.config !== undefined) {
+      update["assembly.config"] = payload.assembly.config;
     }
   }
 

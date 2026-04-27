@@ -18,6 +18,45 @@ const BUSINESS_CATALOG_TOOL_FAMILIES = [
   "text",
 ];
 
+const UI_BEHAVIOR_VALUES = ["draw", "derived", "pricing", "hidden", "assembly"];
+
+const TOOL_GROUP_VALUES = [
+  "gutters",
+  "downspouts",
+  "guards",
+  "fascia",
+  "soffit",
+  "roofing",
+  "siding",
+  "fencing",
+  "hvac",
+  "annotation",
+  "general",
+];
+
+const ASSEMBLY_TYPE_VALUES = [
+  "none",
+  "downspout_v1",
+  "gutter_run_v1",
+  "custom",
+];
+
+const assemblySchema = new Schema(
+  {
+    enabled: { type: Boolean, default: false },
+    type: {
+      type: String,
+      enum: ASSEMBLY_TYPE_VALUES,
+      default: "none",
+    },
+    config: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
+  },
+  { _id: false },
+);
+
 const BEHAVIOR_ESTIMATION_MODES = ["measured", "manual", "text"];
 
 const drawingDefaultsSchema = new Schema(
@@ -124,6 +163,25 @@ const businessCatalogItemSchema = new Schema(
       index: true,
     },
 
+    uiBehavior: {
+      type: String,
+      enum: UI_BEHAVIOR_VALUES,
+      default: "hidden",
+      index: true,
+    },
+
+    toolGroup: {
+      type: String,
+      enum: TOOL_GROUP_VALUES,
+      default: "general",
+      index: true,
+    },
+
+    assembly: {
+      type: assemblySchema,
+      default: () => ({}),
+    },
+
     drawingToolFamily: {
       type: String,
       enum: BUSINESS_CATALOG_TOOL_FAMILIES,
@@ -196,8 +254,11 @@ businessCatalogItemSchema.index(
   { businessId: 1, "source.collection": 1, "source.legacyId": 1 },
   {
     unique: true,
-    sparse: true,
     name: "uniq_business_catalog_legacy_source",
+    partialFilterExpression: {
+      "source.collection": { $exists: true, $type: "string" },
+      "source.legacyId": { $exists: true, $type: "objectId" },
+    },
   },
 );
 

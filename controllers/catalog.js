@@ -6,6 +6,8 @@ function getBusinessId(req) {
 
 async function listCatalogItems(req, res, next) {
   try {
+    console.log("req.user =", req.user);
+    console.log("req.businessId =", req.businessId);
     const businessId = getBusinessId(req);
 
     if (!businessId) {
