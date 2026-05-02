@@ -197,6 +197,17 @@ exports.onSubscriptionChange = async (event) => {
   user.subscriptionPlan = plan;
   user.subscriptionStatus = normalize(sub.status);
 
+  user.subscription = {
+    ...(user.subscription || {}),
+    priceId: price?.id || null,
+    productId: price?.product || null,
+    cancelAtPeriodEnd: !!sub.cancel_at_period_end,
+    currentPeriodStart: period.currentPeriodStart,
+    currentPeriodEnd: period.currentPeriodEnd,
+    trialEnd: period.trialEnd,
+    updatedAt: new Date(),
+  };
+
   await user.save();
 
   if (FF_SUBSCRIPTION_BY_BUSINESS && user.personalBusinessId) {

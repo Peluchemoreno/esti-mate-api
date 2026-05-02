@@ -50,12 +50,17 @@ router.post("/embedded-session", authorize, async (req, res) => {
       mode: "subscription",
       ui_mode: "embedded",
       line_items: [{ price: price.id, quantity }],
-      // Let Stripe email auto-create or attach a customer for you
       customer_email: user.email,
       allow_promotion_codes: true,
-      // Used by your return page to fetch/verify:
+
+      subscription_data: {
+        trial_period_days: 14,
+        metadata: {
+          appUserId: String(user._id),
+        },
+      },
+
       return_url: `${FRONTEND_BASE}/checkout/return?session_id={CHECKOUT_SESSION_ID}`,
-      // Help link back to your user later:
       metadata: { appUserId: String(user._id) },
     });
 
@@ -111,10 +116,66 @@ router.get("/session/:id", async (req, res) => {
         ? session.customer
         : session.customer?.id;
 
-    user.stripeCustomerId = customerId || user.stripeCustomerId;
+    /* user.stripeCustomerId = customerId || user.stripeCustomerId;
     user.stripeSubscriptionId = subscriptionId || user.stripeSubscriptionId;
     user.subscriptionStatus = "active"; // optional; or use session.subscription.status if expanded
+    await user.save(); */
+
+    const expandedSub =
+      typeof session.subscription === "object" ? session.subscription : null;
+
+    const item = expandedSub?.items?.data?.[0];
+    const price = item?.price;
+
+    user.stripeCustomerId = customerId || user.stripeCustomerId;
+    user.stripeSubscriptionId = subscriptionId || user.stripeSubscriptionId;
+
+    user.subscriptionStatus = normalizeSubscriptionStatus(
+      expandedSub?.status || user.subscriptionStatus,
+    );
+
+    if (price?.id) {
+      user.subscriptionPlan =
+        price.id === "price_1SAblmLV1NkgtKMp569jEsoF" ? "test" : "basic";
+    }
+
+    user.subscription = {
+      ...(user.subscription || {}),
+      priceId: price?.id || user.subscription?.priceId || null,
+      productId: price?.product || user.subscription?.productId || null,
+      cancelAtPeriodEnd: !!expandedSub?.cancel_at_period_end,
+      currentPeriodStart:
+        stripeUnixToDate(expandedSub?.current_period_start) ||
+        stripeUnixToDate(item?.current_period_start),
+      currentPeriodEnd:
+        stripeUnixToDate(expandedSub?.current_period_end) ||
+        stripeUnixToDate(item?.current_period_end),
+      trialEnd: stripeUnixToDate(expandedSub?.trial_end),
+      updatedAt: new Date(),
+    };
+
     await user.save();
+
+    function stripeUnixToDate(value) {
+      if (typeof value !== "number") return null;
+
+      const date = new Date(value * 1000);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    function normalizeSubscriptionStatus(status) {
+      return [
+        "active",
+        "trialing",
+        "canceled",
+        "past_due",
+        "unpaid",
+        "incomplete",
+        "incomplete_expired",
+      ].includes(status)
+        ? status
+        : "disabled";
+    }
 
     // Return a fresh JWT (optional but convenient for stateless redirects)
     const token = signJwt(user._id);

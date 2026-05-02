@@ -68,6 +68,14 @@ router.post("/checkout", idempotent, async (req, res) => {
       customer: user.stripeCustomerId,
       line_items: [{ price: priceId, quantity: 1 }],
       allow_promotion_codes: true,
+
+      subscription_data: {
+        trial_period_days: 14,
+        metadata: {
+          appUserId: String(user._id),
+        },
+      },
+
       success_url: `${process.env.FRONTEND_BASE_URL.replace(
         /\/$/,
         "",
