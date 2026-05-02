@@ -371,6 +371,7 @@ const allowedOrigins = new Set([
   "https://www.tryestimate.io",
   "http://192.168.1.191:9000", // local network testing
   "http://192.168.1.109:9000", // local network testing
+  "http://192.168.1.109:4000", // local network testing
 ]);
 
 const corsOptions = {

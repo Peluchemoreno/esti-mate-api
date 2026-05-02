@@ -49,6 +49,30 @@ async function alreadyProcessed(eventId) {
   }
 }
 
+function stripeUnixToDate(value) {
+  if (typeof value !== "number") return null;
+
+  const date = new Date(value * 1000);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getSubscriptionPeriod(sub) {
+  const item = sub.items?.data?.[0];
+
+  return {
+    currentPeriodStart:
+      stripeUnixToDate(sub.current_period_start) ||
+      stripeUnixToDate(item?.current_period_start),
+
+    currentPeriodEnd:
+      stripeUnixToDate(sub.current_period_end) ||
+      stripeUnixToDate(item?.current_period_end),
+
+    trialEnd: stripeUnixToDate(sub.trial_end),
+  };
+}
+
 // ---- Discord Admin Notifications ----
 async function notifyDiscord(title, fields = {}) {
   try {
@@ -159,6 +183,7 @@ exports.onCheckoutCompleted = async (event) => {
 
 exports.onSubscriptionChange = async (event) => {
   if (await alreadyProcessed(event.id)) return;
+
   const sub = event.data.object;
   const user = await User.findOne({ stripeCustomerId: sub.customer });
   if (!user) return;
@@ -166,31 +191,15 @@ exports.onSubscriptionChange = async (event) => {
   const item = sub.items?.data?.[0];
   const price = item?.price;
   const plan = price?.id ? planForPrice(price.id) : user.subscriptionPlan;
+  const period = getSubscriptionPeriod(sub);
 
   user.stripeSubscriptionId = sub.id;
   user.subscriptionPlan = plan;
   user.subscriptionStatus = normalize(sub.status);
 
-  // optional nested dates if you added fields
-  /* if (!user.subscription) user.subscription = {};
-  user.subscription.priceId = price?.id || user.subscription?.priceId;
-  user.subscription.productId = price?.product || user.subscription?.productId;
-  user.subscription.cancelAtPeriodEnd = !!sub.cancel_at_period_end;
-  user.subscription.currentPeriodStart = new Date(
-    sub.current_period_start * 1000,
-  );
-  user.subscription.currentPeriodEnd = new Date(sub.current_period_end * 1000);
-  user.subscription.trialEnd = sub.trial_end
-    ? new Date(sub.trial_end * 1000)
-    : null;
-  user.subscription.updatedAt = new Date(); */
-
   await user.save();
 
   if (FF_SUBSCRIPTION_BY_BUSINESS && user.personalBusinessId) {
-    const item = sub.items?.data?.[0];
-    const price = item?.price;
-
     await upsertBusinessSubscription({
       businessId: user.personalBusinessId,
       stripeCustomerId: sub.customer,
@@ -198,10 +207,10 @@ exports.onSubscriptionChange = async (event) => {
       plan: user.subscriptionPlan,
       status: normalize(sub.status),
       priceId: price?.id,
-      cancelAtPeriodEnd: sub.cancel_at_period_end,
-      currentPeriodStart: new Date(sub.current_period_start * 1000),
-      currentPeriodEnd: new Date(sub.current_period_end * 1000),
-      trialEnd: sub.trial_end ? new Date(sub.trial_end * 1000) : null,
+      cancelAtPeriodEnd: !!sub.cancel_at_period_end,
+      currentPeriodStart: period.currentPeriodStart,
+      currentPeriodEnd: period.currentPeriodEnd,
+      trialEnd: period.trialEnd,
     });
   }
 
@@ -213,8 +222,8 @@ exports.onSubscriptionChange = async (event) => {
     status: sub.status,
     plan: user.subscriptionPlan,
     cancelAtPeriodEnd: String(!!sub.cancel_at_period_end),
-    currentPeriodEnd: sub.current_period_end
-      ? new Date(sub.current_period_end * 1000).toISOString()
+    currentPeriodEnd: period.currentPeriodEnd
+      ? period.currentPeriodEnd.toISOString()
       : null,
     mode: event.livemode ? "LIVE" : "TEST",
   });
