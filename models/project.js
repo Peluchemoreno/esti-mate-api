@@ -179,6 +179,14 @@ const projectSchema = new mongoose.Schema({
     {
       lines: Array,
       imageData: String,
+
+      // NEW: vector diagram + drawing scale metadata
+      svg: { type: String, default: null },
+      meta: {
+        type: Object,
+        default: {},
+      },
+
       totalFootage: Number,
       price: String,
       accessoryData: Array,

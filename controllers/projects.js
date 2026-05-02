@@ -101,6 +101,8 @@ function addDiagramToProject(req, res, next) {
     lines,
     imageData,
     totalFootage,
+    svg,
+    meta,
     price,
     accessoryData,
     product,
@@ -123,6 +125,8 @@ function addDiagramToProject(req, res, next) {
           imageData,
           totalFootage,
           price,
+          svg: svg || null,
+          meta: meta || {},
           createdAt: new Date(),
           accessoryData,
           product,
@@ -198,6 +202,10 @@ async function updateDiagram(req, res, next) {
       "diagrams.$.mitersByProduct": req.body.mitersByProduct,
       "diagrams.$.mixedMiters": req.body.mixedMiters,
       "diagrams.$.accessories": req.body.accessories,
+
+      // NEW: persist drawing scale/vector data
+      "diagrams.$.svg": req.body.svg || null,
+      "diagrams.$.meta": req.body.meta || {},
     };
 
     // ---- NEW: only set if provided ----
