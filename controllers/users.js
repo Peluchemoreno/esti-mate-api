@@ -8,6 +8,52 @@ const { sendPasswordResetEmail } = require("../utils/sendgrid");
 const { generateResetToken } = require("../utils/passwordReset");
 const Business = require("../models/business");
 const BusinessSubscription = require("../models/businessSubscription");
+const FIRST_WIN_FLOW_ID = "gutter_first_estimate";
+
+const ONBOARDING_STEPS = [
+  {
+    id: "start_job",
+    eventName: "project_created",
+    label: "Start your first job",
+  },
+  {
+    id: "open_diagram",
+    eventName: "diagram_opened",
+    label: "Open the drawing tool",
+  },
+  {
+    id: "save_diagram",
+    eventName: "diagram_saved",
+    label: "Save a gutter diagram",
+  },
+  {
+    id: "create_estimate",
+    eventName: "estimate_created",
+    label: "Create a customer-ready estimate",
+  },
+];
+
+function buildDefaultOnboarding(existing = {}) {
+  return {
+    activeFlow: existing.activeFlow || FIRST_WIN_FLOW_ID,
+    completedStepIds: Array.isArray(existing.completedStepIds)
+      ? existing.completedStepIds
+      : [],
+    completedEventNames: Array.isArray(existing.completedEventNames)
+      ? existing.completedEventNames
+      : [],
+    skippedStepIds: Array.isArray(existing.skippedStepIds)
+      ? existing.skippedStepIds
+      : [],
+    dismissedFlowIds: Array.isArray(existing.dismissedFlowIds)
+      ? existing.dismissedFlowIds
+      : [],
+    firstWinCompletedAt: existing.firstWinCompletedAt || null,
+    lastEventName: existing.lastEventName || null,
+    lastEventAt: existing.lastEventAt || null,
+    updatedAt: existing.updatedAt || null,
+  };
+}
 
 async function signup(req, res, next) {
   try {
@@ -425,6 +471,79 @@ async function changePassword(req, res) {
   res.json({ message: "Password updated successfully" });
 }
 
+async function trackOnboardingEvent(req, res, next) {
+  try {
+    const userId = req.user?._id;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const eventName = String(req.body?.eventName || "").trim();
+    const metadata =
+      req.body?.metadata && typeof req.body.metadata === "object"
+        ? req.body.metadata
+        : {};
+
+    if (!eventName) {
+      return res.status(400).json({ message: "eventName is required" });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const onboarding = buildDefaultOnboarding(user.onboarding || {});
+    const matchedStep = ONBOARDING_STEPS.find(
+      (step) => step.eventName === eventName,
+    );
+
+    const completedStepIds = new Set(onboarding.completedStepIds);
+    const completedEventNames = new Set(onboarding.completedEventNames);
+
+    completedEventNames.add(eventName);
+
+    if (matchedStep) {
+      completedStepIds.add(matchedStep.id);
+    }
+
+    const allStepIds = ONBOARDING_STEPS.map((step) => step.id);
+    const firstWinComplete = allStepIds.every((stepId) =>
+      completedStepIds.has(stepId),
+    );
+
+    const now = new Date();
+
+    user.onboarding = {
+      ...onboarding,
+      activeFlow: onboarding.activeFlow || FIRST_WIN_FLOW_ID,
+      completedStepIds: Array.from(completedStepIds),
+      completedEventNames: Array.from(completedEventNames),
+      firstWinCompletedAt:
+        onboarding.firstWinCompletedAt || (firstWinComplete ? now : null),
+      lastEventName: eventName,
+      lastEventAt: now,
+      updatedAt: now,
+    };
+
+    await user.save();
+
+    return res.json({
+      ok: true,
+      onboarding: user.onboarding,
+      tracked: {
+        eventName,
+        stepId: matchedStep?.id || null,
+        metadata,
+      },
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   signup,
   login,
@@ -436,4 +555,5 @@ module.exports = {
   adminResetUserPassword,
   forgotPassword,
   resetPassword,
+  trackOnboardingEvent,
 };

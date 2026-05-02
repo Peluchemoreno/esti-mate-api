@@ -123,6 +123,21 @@ router.get("/account-state", requireAdmin, async (req, res, next) => {
         projects: projectCount,
         estimates: estimateCount,
       },
+      onboarding: {
+        activeFlow: user.onboarding?.activeFlow || "gutter_first_estimate",
+        completedStepIds: user.onboarding?.completedStepIds || [],
+        completedEventNames: user.onboarding?.completedEventNames || [],
+        skippedStepIds: user.onboarding?.skippedStepIds || [],
+        dismissedFlowIds: user.onboarding?.dismissedFlowIds || [],
+        firstWinCompletedAt: user.onboarding?.firstWinCompletedAt || null,
+        lastEventName: user.onboarding?.lastEventName || null,
+        lastEventAt: user.onboarding?.lastEventAt || null,
+        updatedAt: user.onboarding?.updatedAt || null,
+        totalSteps: 4,
+        completedStepsCount: Array.isArray(user.onboarding?.completedStepIds)
+          ? user.onboarding.completedStepIds.length
+          : 0,
+      },
     });
   } catch (err) {
     next(err);

@@ -118,6 +118,45 @@ const userSchema = new mongoose.Schema({
     trialEnd: { type: Date, default: null },
     updatedAt: { type: Date, default: null },
   },
+
+  onboarding: {
+    activeFlow: {
+      type: String,
+      default: "gutter_first_estimate",
+    },
+    completedStepIds: {
+      type: [String],
+      default: [],
+    },
+    completedEventNames: {
+      type: [String],
+      default: [],
+    },
+    skippedStepIds: {
+      type: [String],
+      default: [],
+    },
+    dismissedFlowIds: {
+      type: [String],
+      default: [],
+    },
+    firstWinCompletedAt: {
+      type: Date,
+      default: null,
+    },
+    lastEventName: {
+      type: String,
+      default: null,
+    },
+    lastEventAt: {
+      type: Date,
+      default: null,
+    },
+    updatedAt: {
+      type: Date,
+      default: null,
+    },
+  },
   companyAddress: {
     type: String,
   },

@@ -10,6 +10,7 @@ const {
   resetPassword,
   adminResetUserPassword,
   changePassword,
+  trackOnboardingEvent,
 } = require("../controllers/users");
 
 const multer = require("multer");
@@ -29,6 +30,7 @@ router.post("/change-password", authorize, changePassword);
 
 router.get("/me", authorize, getCurrentUser);
 router.patch("/me", authorize, updateUserInfo);
+router.post("/me/onboarding/event", authorize, trackOnboardingEvent);
 router.post(
   "/upload-logo",
   authorize,
@@ -43,7 +45,7 @@ router.post(
     });
 
     res.status(200).json({ message: "Logo uploaded successfully" });
-  }
+  },
 );
 router.get("/:userId/logo", authorize, async (req, res) => {
   const user = await User.findById(req.params.userId);
