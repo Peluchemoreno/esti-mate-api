@@ -6,6 +6,8 @@ const IncorrectEmailOrPasswordError = require("../errors/IncorrectEmailOrPasswor
 const crypto = require("crypto");
 const { sendPasswordResetEmail } = require("../utils/sendgrid");
 const { generateResetToken } = require("../utils/passwordReset");
+const Business = require("../models/business");
+const BusinessSubscription = require("../models/businessSubscription");
 
 async function signup(req, res, next) {
   try {
@@ -21,20 +23,29 @@ async function signup(req, res, next) {
       companyPhone,
     } = req.body;
 
+    const normalizedEmail = String(email || "")
+      .toLowerCase()
+      .trim();
+
     // 1) Prevent duplicate email first
     const existing = await User.findOne({
-      email: email.toLowerCase().trim(),
+      email: normalizedEmail,
     }).lean();
+
     if (existing) {
       return res.status(409).json({ message: "Please use a different email" });
     }
 
     // 2) Create the user
     console.log("creating the user, as no user was found");
+
     const passwordHash = await bcrypt.hash(password, 10);
+
     const user = await User.create({
-      fullName: `${String(firstName).trim()} ${String(lastName).trim()}`,
-      email: email.toLowerCase().trim(),
+      fullName: `${String(firstName || "").trim()} ${String(
+        lastName || "",
+      ).trim()}`.trim(),
+      email: normalizedEmail,
       passwordHash,
       companyName,
       companyAddress,
@@ -47,11 +58,52 @@ async function signup(req, res, next) {
 
     // 3) Safety: ensure we have an id
     if (!user || !user._id) {
-      console.error("signup: created user has no _id, aborting catalog seed");
+      console.error("signup: created user has no _id, aborting setup");
       return res.status(500).json({ message: "Failed to create user" });
     }
 
-    // 4) Seed that user's catalog (await it, and PASS _id)
+    // 4) Create personal business for tenant-scoped routes/catalog
+    let business = null;
+
+    try {
+      business = await Business.create({
+        name: companyName || `${user.fullName}'s Business`,
+        ownerUserId: user._id,
+        createdByUserId: user._id,
+        type: "personal",
+      });
+
+      user.personalBusinessId = business._id;
+      await user.save();
+
+      // Optional but useful: create a matching business subscription shell.
+      // Stripe webhooks will update this later after checkout.
+      await BusinessSubscription.updateOne(
+        { businessId: business._id },
+        {
+          $setOnInsert: {
+            businessId: business._id,
+            plan: user.subscriptionPlan || "free",
+            status: user.subscriptionStatus || "disabled",
+            seatQuantity: 1,
+            cancelAtPeriodEnd: false,
+          },
+        },
+        { upsert: true },
+      );
+    } catch (businessErr) {
+      console.error(
+        "Failed to create personal business for user %s:",
+        user._id,
+        businessErr,
+      );
+
+      return res.status(500).json({
+        message: "Failed to create business account for user",
+      });
+    }
+
+    // 5) Seed that user's legacy catalog
     try {
       await ensureUserCatalog(user._id);
     } catch (seedErr) {
@@ -59,7 +111,7 @@ async function signup(req, res, next) {
       console.error("ensureUserCatalog failed for user %s:", user._id, seedErr);
     }
 
-    // 5) Issue JWT (if you do that here; if Stripe will replace later, fine)
+    // 6) Issue JWT
     const token = jwt.sign(
       { _id: user._id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
@@ -76,6 +128,7 @@ async function signup(req, res, next) {
         companyAddress: user.companyAddress,
         companyPhone: user.companyPhone,
         role: user.role,
+        personalBusinessId: user.personalBusinessId,
       },
       token,
     });
@@ -84,6 +137,7 @@ async function signup(req, res, next) {
     if (err && err.code === 11000 && err.keyPattern && err.keyPattern.email) {
       return res.status(409).json({ message: "Please use a different email" });
     }
+
     return next(err);
   }
 }
